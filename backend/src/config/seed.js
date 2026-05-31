@@ -148,8 +148,8 @@ const seedData = async () => {
     // Admin
     const admin = await User.create({
       name: 'System Admin',
-      email: 'admin@nowherenest.com',
-      password: 'password123',
+      email: 'aaqilezio@gmail.com',
+      password: '1234567890',
       phone: '+919999900000',
       role: 'admin',
       isVerified: true
