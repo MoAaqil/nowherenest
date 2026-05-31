@@ -1,0 +1,71 @@
+.bottom-navbar-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 420px;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  pointer-events: none; /* Let clicks pass through outside the navbar */
+}
+
+.floating-bottom-nav {
+  pointer-events: auto; /* Re-enable pointer events on the navbar itself */
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(10, 59, 42, 0.08);
+  border-radius: 9999px;
+  padding: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  box-shadow: 0 10px 30px rgba(10, 59, 42, 0.12);
+  gap: 6px;
+}
+
+.nav-dock-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748B; /* Slate 500 */
+  text-decoration: none;
+  padding: 10px;
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-dock-item:hover {
+  color: #0A3B2A;
+  background: rgba(10, 59, 42, 0.04);
+}
+
+.nav-dock-item.active {
+  background: #0A3B2A; /* Deep Forest Green */
+  color: #FFFFFF; /* Pure White */
+  padding: 10px 20px;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(10, 59, 42, 0.2);
+}
+
+.nav-dock-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  animation: fadeInLabel 0.25s ease-out;
+}
+
+@keyframes fadeInLabel {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

@@ -1,0 +1,103 @@
+.admin-page {
+  padding-top: 32px;
+  padding-bottom: 60px;
+  text-align: left;
+}
+
+.admin-header-row {
+  margin-bottom: 32px;
+}
+
+.admin-header-row h2 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+/* Stat cards */
+.admin-stats-grid {
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.admin-stat-card {
+  padding: 24px;
+  background-color: #FFFFFF;
+}
+
+.admin-stat-card .lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-stat-card .stat-ic {
+  color: var(--text-light);
+}
+
+.admin-stat-card h3 {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.admin-stat-card p {
+  font-size: 13px;
+  color: var(--text-medium);
+}
+
+.primary-highlight {
+  border-left: 4px solid var(--primary-color);
+}
+
+.primary-highlight h3 {
+  color: var(--primary-color);
+}
+
+/* Split layout */
+.admin-split-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+}
+
+.sub-description {
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.admin-payout-requests-list {
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.payout-request-item {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+}
+
+.payout-details-meta {
+  background-color: #F8FAFC;
+  padding: 10px 14px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.active-properties-chart {
+  background-color: #F8FAFC;
+  border-radius: var(--border-radius-md);
+  padding: 12px 18px;
+}
+
+@media (max-width: 900px) {
+  .admin-split-layout {
+    grid-template-columns: 1fr;
+  }
+}

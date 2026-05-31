@@ -1,0 +1,15 @@
+.promotions-page {
+  padding-bottom: 48px;
+}
+
+.coupon-code-badge {
+  display: inline-flex;
+  background-color: var(--primary-light);
+  border: 1px dashed var(--primary-color);
+  color: var(--primary-color);
+  padding: 6px 12px;
+  border-radius: var(--border-radius-sm);
+  font-weight: 700;
+  font-family: monospace;
+  font-size: 14px;
+}

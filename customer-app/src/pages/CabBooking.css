@@ -1,0 +1,138 @@
+.cab-booking-page {
+  padding-top: 32px;
+  padding-bottom: 60px;
+  text-align: left;
+}
+
+.cab-header {
+  margin-bottom: 32px;
+}
+
+.cab-header h2 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.cab-header p {
+  font-size: 14px;
+  color: var(--text-medium);
+  margin-top: 4px;
+}
+
+/* Split layout */
+.cab-booking-split {
+  display: grid;
+  grid-template-columns: 2.1fr 2.9fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.cab-controls-side {
+  height: 100%;
+}
+
+.cab-dispatch-form, .cab-simulation-panel {
+  background-color: #FFFFFF;
+  box-shadow: var(--shadow-xl);
+}
+
+.cab-dispatch-form h4, .cab-simulation-panel h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 20px;
+}
+
+/* Ride Type selection cards */
+.ride-type-card {
+  padding: 16px 8px;
+  cursor: pointer;
+  background-color: #FFFFFF;
+  text-align: center;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.ride-type-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
+
+.ride-type-card.active {
+  background-color: var(--primary-light);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.ride-type-card span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-medium);
+}
+
+.ride-type-card svg {
+  color: var(--primary-color);
+}
+
+.ride-type-card.active span {
+  color: var(--primary-color);
+}
+
+/* Simulation status and details */
+.simulation-status-header {
+  background-color: var(--background-color);
+  padding: 16px;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 20px;
+  border-left: 4px solid var(--primary-color);
+}
+
+.status-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.simulation-status-header h4 {
+  margin-bottom: 0;
+  margin-top: 4px;
+}
+
+.driver-details-card {
+  background-color: #F8FAFC;
+  border: 1px solid var(--border-color);
+}
+
+.driver-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cab-map-side {
+  height: 100%;
+}
+
+.map-wrapper {
+  height: 480px;
+  overflow: hidden;
+  position: sticky;
+  top: 112px;
+}
+
+@media (max-width: 900px) {
+  .cab-booking-split {
+    grid-template-columns: 1fr;
+  }
+  .map-wrapper {
+    height: 320px;
+  }
+}

@@ -1,0 +1,228 @@
+.login-page {
+  min-height: calc(100vh - 160px);
+  padding: 40px 24px;
+}
+
+.login-card {
+  max-width: 480px;
+  width: 100%;
+  padding: 32px;
+  box-shadow: var(--shadow-xl);
+  background-color: var(--card-background);
+}
+
+.login-card-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-owl-logo {
+  height: 64px;
+  width: 64px;
+  margin-bottom: 16px;
+}
+
+.login-card-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: var(--text-medium);
+  margin-top: 8px;
+}
+
+.login-method-selector {
+  display: flex;
+  background-color: #F1F5F9;
+  border-radius: var(--border-radius-md);
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.login-method-selector button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: calc(var(--border-radius-md) - 4px);
+  color: var(--text-medium);
+  transition: all var(--transition-fast);
+}
+
+.login-method-selector button.active {
+  background-color: #FFFFFF;
+  color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.login-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #FEE2E2;
+  color: #991B1B;
+  padding: 12px 16px;
+  border-radius: var(--border-radius-md);
+  font-size: 14px;
+  margin-bottom: 20px;
+  border: 1px solid #FCA5A5;
+}
+
+.login-success-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #DCFCE7;
+  color: #15803d;
+  padding: 12px 16px;
+  border-radius: var(--border-radius-md);
+  font-size: 14px;
+  margin-bottom: 20px;
+  border: 1px solid #86EFAC;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon svg {
+  position: absolute;
+  left: 14px;
+  color: var(--text-light);
+}
+
+.input-with-icon .form-control {
+  padding-left: 44px;
+}
+
+.field-helper-text {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: -4px;
+  margin-bottom: 8px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-resend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.otp-controls {
+  margin-top: 10px;
+}
+
+/* Google separator & button styles */
+.google-signin-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sep-line {
+  flex: 1;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.google-signin-separator span {
+  padding: 0 12px;
+}
+
+.google-signin-button {
+  gap: 10px;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  background-color: #FFFFFF;
+  color: var(--text-dark);
+}
+
+.google-signin-button:hover {
+  background-color: #F8FAFC;
+  border-color: var(--text-medium);
+}
+
+.google-btn-logo {
+  width: 18px;
+  height: 18px;
+}
+
+.login-card-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text-medium);
+}
+
+.toggle-link {
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.toggle-link:hover {
+  color: var(--primary-hover);
+}
+
+/* Hidden recaptcha element style safety */
+#recaptcha-container {
+  display: none;
+}
+
+/* Role selector styles */
+.login-role-selector {
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.role-selector-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-medium);
+  margin-bottom: 8px;
+}
+
+.role-tabs-container {
+  background-color: #F1F5F9;
+  border-radius: var(--border-radius-md);
+  padding: 4px;
+  gap: 4px;
+}
+
+.role-tab-btn {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-medium);
+  border-radius: calc(var(--border-radius-md) - 4px);
+  background: transparent;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.role-tab-btn.active {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-sm);
+}
+

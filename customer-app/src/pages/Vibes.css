@@ -1,0 +1,852 @@
+.vibes-reels-container {
+  height: 100vh;
+  width: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  background-color: #000;
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.vibes-reels-container::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome/Safari */
+}
+
+.vibe-reel-slide {
+  height: 100vh;
+  width: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.vibe-video-player {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  background-color: #000;
+  max-width: 500px; /* Enforce mobile aspect ratio constraint even on desktop */
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.8);
+}
+
+.vibe-overlay-controls {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  max-width: 500px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 80%, rgba(0,0,0,0.6) 100%);
+  color: white;
+  z-index: 10;
+  pointer-events: none; /* Let clicks pass through to the iframe */
+}
+
+.vibe-top-bar,
+.vibe-right-actions,
+.vibe-bottom-description {
+  pointer-events: auto; /* Catch actions on buttons and links */
+}
+
+.center-play-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  width: 70px;
+  height: 70px;
+  animation: pulsePlay 1s ease infinite;
+  pointer-events: none;
+}
+
+@keyframes pulsePlay {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+}
+
+.vibe-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.vibe-back-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 30px;
+  padding: 8px 16px;
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.vibe-back-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.vibe-audio-btn {
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.vibe-audio-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.vibe-right-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 170px; /* Shifted up to clear the bottom navbar dock */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  z-index: 20;
+}
+
+.vibe-action-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  transition: transform 0.2s;
+}
+
+.vibe-action-btn:active {
+  transform: scale(0.9);
+}
+
+.visit-icon-wrapper {
+  background: var(--primary-color);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(10,59,42,0.4);
+  border: 2px solid white;
+  transition: background 0.2s;
+}
+
+.vibe-action-btn:hover .visit-icon-wrapper {
+  background: #15803d;
+}
+
+.action-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vibe-bottom-description {
+  margin-bottom: 90px; /* Shifted up to clear the bottom navbar dock */
+  text-align: left;
+  max-width: 80%;
+}
+
+.host-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.vibe-host-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid white;
+}
+
+.vibe-host-avatar-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  font-weight: 800;
+  font-size: 15px;
+  border: 1.5px solid white;
+}
+
+.host-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  display: block;
+}
+
+.stay-meta {
+  font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  font-weight: 600;
+}
+
+.vibe-caption-text {
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  font-weight: 500;
+}
+
+/* Loading/Error pages styling */
+.vibes-loading-container, .vibes-error-container, .vibes-empty-container {
+  height: 100vh;
+  width: 100%;
+  background-color: #0F172A;
+  color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3.5px solid rgba(255,255,255,0.15);
+  border-top: 3.5px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Video Ended Overlay Card Box Styles */
+.vibe-end-screen-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  max-width: 500px;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.vibe-end-card {
+  background: rgba(10, 59, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: 82%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  color: white;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.vibe-end-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #22C55E;
+  letter-spacing: 1.5px;
+}
+
+.vibe-end-title {
+  font-size: 18px;
+  font-weight: 950;
+  margin: 0;
+  color: #FFFFFF;
+}
+
+.vibe-end-rating {
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(251, 191, 36, 0.2);
+  color: #FBBF24;
+  padding: 4px 10px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vibe-end-desc {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.8);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.vibe-end-visit-btn {
+  background: #22C55E;
+  color: white;
+  font-weight: 700;
+  font-size: 13.5px;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 20px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s, transform 0.1s;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.vibe-end-visit-btn:hover {
+  background: #16A34A;
+  transform: translateY(-1px);
+}
+
+.vibe-end-visit-btn:active {
+  transform: translateY(0);
+}
+
+.vibe-end-replay-btn {
+  background: transparent;
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s, color 0.2s;
+}
+
+.vibe-end-replay-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* ═══════════════════════════════════════════════
+   IFRAME WRAPPER & SOCIAL MEDIA BLOCKERS
+   ═══════════════════════════════════════════════ */
+
+/* Wrapper that fills the slide like the video */
+.vibe-iframe-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 500px;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Aspect-ratio wrappers for Instagram & Pinterest (calculated from URL types) */
+.vibe-iframe-wrapper.vibe-aspect-9-16 {
+  aspect-ratio: 9 / 16 !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 80vh !important;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+
+.vibe-iframe-wrapper.vibe-aspect-16-9 {
+  aspect-ratio: 16 / 9 !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 80vh !important;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+
+.vibe-iframe-wrapper iframe {
+  border: none !important;
+}
+
+/* Instagram Embed: full-width, cropped top header (60px) & bottom footer (120px) */
+.vibe-iframe-wrapper iframe.vibe-iframe-instagram {
+  width: 100% !important;
+  height: calc(100% + 180px) !important;
+  position: absolute !important;
+  top: -60px !important;
+  left: 0 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+
+/* Pinterest Embed: full-width, cropped top header & bottom footer */
+.vibe-iframe-wrapper iframe.vibe-iframe-pinterest {
+  width: 100% !important;
+  height: calc(100% + 180px) !important;
+  position: absolute !important;
+  top: -60px !important;
+  left: 0 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+
+/* Google Drive Preview: clean full cover */
+.vibe-iframe-wrapper iframe.vibe-iframe-gdrive {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+
+/* YouTube Player Clean Cover (centers & covers black edges slightly) */
+.vibe-iframe-wrapper iframe.vibe-iframe-youtube {
+  width: 140% !important;
+  height: 140% !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  pointer-events: none !important;
+}
+
+/* Placeholder for inactive slides */
+.vibe-iframe-placeholder {
+  width: 100%;
+  height: 100%;
+  max-width: 500px;
+  background: #000;
+}
+
+/* Click-blocker: transparent div positioned above the iframe */
+.vibe-iframe-click-blocker {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+/* Crop mask to hide footer on portrait embeds */
+.vibe-iframe-crop-bottom {
+  display: none;
+}
+
+.vibe-iframe-crop-bottom.vibe-crop-aspect-9-16 {
+  display: block;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35%; /* Covers the bottom 35% which contains the comments/likes footer of the Reel */
+  background: #000;
+  z-index: 5;
+  pointer-events: none; /* Allows clicks to register through or just acts as mask overlay */
+}
+
+/* ═══════════════════════════════════════════════
+   THREE-DOT BUTTON & DROPDOWN MENU
+   ═══════════════════════════════════════════════ */
+
+.vibe-dots-btn {
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.vibe-dots-btn:hover { background: rgba(255,255,255,0.25); transform: scale(1.08); }
+
+/* Backdrop that captures outside clicks */
+.vibe-dots-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 64px 16px 0 0;
+}
+
+/* The dropdown menu card */
+.vibe-dots-menu {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 6px 0;
+  min-width: 220px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: dotsMenuIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes dotsMenuIn {
+  from { transform: scale(0.85) translateY(-10px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.vibe-dots-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  gap: 8px;
+}
+
+.vibe-dots-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vibe-dots-close {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: rgba(255,255,255,0.7);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.vibe-dots-close:hover { background: rgba(255,255,255,0.2); }
+
+.vibe-dots-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 0 0 4px;
+}
+
+.vibe-dots-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  color: rgba(255,255,255,0.85);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.12s;
+}
+.vibe-dots-item:hover { background: rgba(255,255,255,0.08); }
+
+.vibe-dots-info {
+  cursor: default;
+  padding: 8px 16px 12px;
+}
+.vibe-dots-info:hover { background: none; }
+
+/* Audio button (already existed, ensure it's consistent with new top bar layout) */
+.vibe-audio-btn {
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s;
+  padding: 0;
+}
+.vibe-audio-btn:hover { background: rgba(255,255,255,0.25); }
+
+/* Direct Checkout Bottom Sheet Panel */
+.vibe-checkout-backdrop {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  max-width: 500px;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 950;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.vibe-checkout-sheet {
+  width: 100%;
+  background: white;
+  border-radius: 24px 24px 0 0;
+  padding: 24px;
+  color: #0F172A;
+  box-sizing: border-box;
+  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.3);
+  text-align: left;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.vibe-checkout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.vibe-checkout-title {
+  font-size: 17px;
+  font-weight: 900;
+  color: #0A3B2A;
+}
+
+.vibe-checkout-close {
+  background: #F1F5F9;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #64748B;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vibe-checkout-subtitle {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #475569;
+  margin: 0 0 16px 0;
+}
+
+.vibe-checkout-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.vibe-checkout-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vibe-checkout-rooms-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.vibe-checkout-rooms-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.vibe-checkout-room-tab {
+  flex: 1;
+  min-width: 110px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #E2E8F0;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.vibe-checkout-room-tab.active {
+  border-color: #0A3B2A;
+  background: #F0FDF4;
+}
+
+.vibe-checkout-room-tab.active span {
+  color: #0A3B2A;
+  font-weight: 800;
+}
+
+.vibe-checkout-room-tab span {
+  font-size: 12px;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.vibe-checkout-room-tab strong {
+  font-size: 13px;
+  color: #0F172A;
+}
+
+.vibe-checkout-input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #E2E8F0;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.vibe-checkout-guests-box {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.vibe-checkout-stepper-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stepper-title {
+  font-size: 13px;
+  font-weight: 700;
+  display: block;
+}
+
+.stepper-subtitle {
+  font-size: 10px;
+  color: #64748B;
+  display: block;
+}
+
+.stepper-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepper-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #CBD5E1;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.stepper-val {
+  font-size: 13px;
+  font-weight: 700;
+  width: 14px;
+  text-align: center;
+}
+
+.vibe-checkout-totals {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #E2E8F0;
+  margin-bottom: 16px;
+}
+
+.vibe-checkout-btn {
+  width: 100%;
+  background: #0A3B2A;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  box-shadow: 0 4px 12px rgba(10,59,42,0.25);
+}
+
+.vibe-checkout-btn:hover {
+  opacity: 0.9;
+}
+
+

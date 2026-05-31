@@ -1,0 +1,261 @@
+.owner-dashboard-page {
+  padding-top: 32px;
+  padding-bottom: 60px;
+  text-align: left;
+}
+
+/* Stats overview */
+.dashboard-stats {
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.stat-box {
+  flex: 1;
+  min-width: 280px;
+  padding: 24px;
+  align-items: center;
+  gap: 20px;
+  background-color: #FFFFFF;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-icon-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--border-radius-md);
+  font-size: 24px;
+}
+
+.wallet-circle {
+  background-color: #DCFCE7;
+  color: #166534;
+}
+
+.bank-circle {
+  background-color: #DBEAFE;
+  color: #1E40AF;
+}
+
+.stat-data {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+  margin-bottom: 4px;
+}
+
+.stat-data h3 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary-color);
+}
+
+.bank-account-brief {
+  font-size: 15px;
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+/* Dashboard layout */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 32px;
+}
+
+.dashboard-sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: #FFFFFF;
+  height: fit-content;
+  position: sticky;
+  top: 112px;
+}
+
+.dashboard-sidebar button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-medium);
+  border-radius: var(--border-radius-sm);
+  width: 100%;
+  text-align: left;
+  transition: all var(--transition-fast);
+  margin-bottom: 8px;
+}
+
+.dashboard-sidebar button:last-child {
+  margin-bottom: 0;
+}
+
+.dashboard-sidebar button:hover {
+  background-color: var(--background-color);
+  color: var(--primary-color);
+}
+
+.dashboard-sidebar button.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.dashboard-main-content {
+  min-height: 450px;
+}
+
+.tab-heading {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text-dark);
+}
+
+/* Bookings table */
+.bookings-table-wrapper {
+  border-top: 1px solid var(--border-color);
+}
+
+.bookings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+
+.bookings-table th {
+  background-color: #F8FAFC;
+  padding: 14px 20px;
+  font-weight: 600;
+  color: var(--text-medium);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.bookings-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-medium);
+}
+
+.bookings-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Amenities checkbox grid */
+.amenities-checkboxes-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.amenity-checkbox-card {
+  padding: 12px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  gap: 10px;
+  justify-content: flex-start;
+  transition: all var(--transition-fast);
+}
+
+.amenity-checkbox-card.active {
+  border-color: var(--primary-color);
+  background-color: var(--primary-light);
+}
+
+.amenity-checkbox-card .checkbox-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background-color: #FFFFFF;
+}
+
+.amenity-checkbox-card .checkbox-circle.checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  font-size: 11px;
+}
+
+.amenity-checkbox-card span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-medium);
+  text-transform: capitalize;
+}
+
+/* Experiences / USPs mini form builder */
+.add-usps-builder-section {
+  background-color: #F8FAFC;
+  border: 1px dashed var(--border-color);
+  padding: 20px;
+  border-radius: var(--border-radius-md);
+  margin-top: 24px;
+}
+
+.usp-form-row {
+  background-color: #FFFFFF;
+  padding: 16px;
+  border-radius: var(--border-radius-md);
+  gap: 16px;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.usp-form-row .form-group {
+  margin-bottom: 0;
+}
+
+.added-usps-summary-list {
+  margin-top: 20px;
+}
+
+.added-usps-summary-list h5 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.added-usp-pill {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-color);
+  padding: 10px 16px;
+  border-radius: var(--border-radius-sm);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.added-usp-pill span {
+  color: var(--text-medium);
+}
+
+.btn-delete-usp {
+  color: var(--text-light);
+  padding: 4px;
+  transition: color var(--transition-fast);
+}
+
+.btn-delete-usp:hover {
+  color: #EF4444;
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+  .amenities-checkboxes-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1,0 +1,238 @@
+.dashboard-page {
+  padding-bottom: 48px;
+}
+
+.dashboard-header {
+  margin-bottom: 32px;
+}
+
+.dashboard-header h2 {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.dashboard-header .subtitle {
+  color: var(--text-medium);
+  font-size: 14px;
+}
+
+.dashboard-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 140px);
+}
+
+.dashboard-metrics-grid {
+  margin-bottom: 32px;
+}
+
+.metric-card {
+  padding: 20px;
+}
+
+.metric-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-medium);
+  text-transform: uppercase;
+}
+
+.metric-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.metric-icon-wrapper.rev { background-color: #E8F0EC; color: var(--primary-color); }
+.metric-icon-wrapper.occ { background-color: #F0FDF4; color: #16A34A; }
+.metric-icon-wrapper.check { background-color: #EFF6FF; color: #2563EB; }
+.metric-icon-wrapper.pend { background-color: #FFFBEB; color: #D97706; }
+
+.metric-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 12px 0 4px;
+  color: var(--text-dark);
+}
+
+.metric-trend {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.metric-trend.green { color: #16A34A; }
+.metric-trend.warning { color: #D97706; }
+
+.dashboard-grid-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.flex-col-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header-row {
+  margin-bottom: 16px;
+}
+
+.card-header-row h4 {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-queue {
+  padding: 32px;
+  background-color: #F8FAFC;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-medium);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.queue-item {
+  padding: 14px 16px;
+  background-color: #F8FAFC;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.queue-item:hover {
+  border-color: var(--primary-color);
+  background-color: white;
+}
+
+.guest-info h6 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.guest-info p {
+  font-size: 12px;
+  color: var(--text-medium);
+  margin-top: 2px;
+}
+
+.room-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-color);
+  background: var(--primary-light);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 6px;
+  text-transform: uppercase;
+}
+
+.checkout-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #D97706;
+  background: #FEF3C7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 6px;
+  text-transform: uppercase;
+}
+
+.custom-bar-val {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-medium);
+  margin-bottom: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.custom-bar-col:hover .custom-bar-val {
+  opacity: 1;
+}
+
+.stats-footer-row {
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+}
+
+.stat-summary-info span {
+  font-size: 12px;
+  color: var(--text-light);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.stat-summary-info h5 {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.view-all-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.view-all-link:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+.card-alert-housekeeping {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border-left: 4px solid var(--accent-color);
+}
+
+.alert-circle-icon {
+  width: 42px;
+  height: 42px;
+  background: white;
+  border-radius: 50%;
+  color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-circle-icon + div h5 {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.alert-circle-icon + div p {
+  font-size: 12px;
+  color: var(--text-medium);
+}
+
+.btn-close {
+  color: var(--text-light);
+}
+
+.btn-close:hover {
+  color: #EF4444;
+}
+
+.btn-danger-hover:hover {
+  background-color: #EF4444 !important;
+  color: white !important;
+  border-color: #EF4444 !important;
+}

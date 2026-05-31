@@ -1,0 +1,37 @@
+.bookings-page {
+  padding-bottom: 48px;
+}
+
+.btn-toggle {
+  background-color: white;
+  border: 1px solid var(--border-color);
+  color: var(--text-medium);
+  margin-left: 4px;
+}
+
+.btn-toggle:first-child {
+  margin-left: 0;
+}
+
+.btn-toggle.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.otp-placeholder {
+  font-family: monospace;
+  color: var(--text-light);
+  letter-spacing: 2px;
+  font-size: 14px;
+}
+
+.otp-verified-code {
+  color: #16A34A;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.table-wrapper {
+  margin-top: 24px;
+}
