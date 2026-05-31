@@ -852,16 +852,27 @@ const Home = () => {
           <form
             onSubmit={handleSearchSubmit}
             className="hero-search-bar"
-            style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)', padding: '16px', borderRadius: '16px', boxShadow: 'var(--shadow-md)', maxWidth: '640px' }}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '16px', 
+              background: '#FFFFFF', 
+              padding: '24px', 
+              borderRadius: '24px', 
+              border: '1.5px solid var(--border-color)', 
+              boxShadow: 'var(--shadow-lg)', 
+              maxWidth: '640px' 
+            }}
           >
-            <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
-              <div className="search-input-wrapper" style={{ flex: 1, margin: 0 }}>
-                <Search size={20} className="search-icon" />
+            <div style={{ display: 'flex', gap: '12px', width: '100%', alignItems: 'center' }}>
+              <div className="search-input-wrapper" style={{ flex: 1, margin: 0, border: '1.5px solid var(--border-color)', borderRadius: '12px', background: '#F8FAFC', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Search size={20} className="search-icon" style={{ color: 'var(--primary-color)' }} />
                 <input
                   type="text"
                   placeholder={translate('search_placeholder', language)}
                   value={searchQuery}
                   onChange={e => { setSearchQuery(e.target.value); fetchStays(e.target.value, selectedCategory, gpsRange); }}
+                  style={{ background: 'transparent', border: 'none', outline: 'none', width: '100%', fontSize: '14px', fontWeight: '600', color: 'var(--text-dark)' }}
                 />
               </div>
 
@@ -870,19 +881,33 @@ const Home = () => {
                 type="button"
                 onClick={() => setShowFilters(prev => !prev)}
                 className="filter-trigger-btn"
-                style={{ background: (showFilters || activeFiltersCount > 0) ? 'var(--primary-color)' : '#0F172A' }}
+                style={{ 
+                  background: (showFilters || activeFiltersCount > 0) ? 'var(--primary-color)' : '#F8FAFC', 
+                  color: (showFilters || activeFiltersCount > 0) ? '#FFFFFF' : 'var(--primary-color)',
+                  border: '1.5px solid var(--border-color)',
+                  borderRadius: '12px',
+                  width: '46px',
+                  height: '46px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  padding: 0
+                }}
                 title="Open Filters"
               >
-                <SlidersHorizontal size={18} />
+                <SlidersHorizontal size={18} style={{ margin: 'auto' }} />
                 {activeFiltersCount > 0 && (
-                  <span className="filter-badge-count">{activeFiltersCount}</span>
+                  <span className="filter-badge-count" style={{ background: 'var(--accent-color)', color: 'var(--primary-color)' }}>{activeFiltersCount}</span>
                 )}
               </button>
             </div>
 
             {/* Neighborhood Location Picker Helper */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.2)', paddingTop: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
               <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-medium)', display: 'block', marginBottom: '6px', textAlign: 'left' }}>State</label>
                 <select
                   value={filterState}
                   onChange={e => {
@@ -901,7 +926,7 @@ const Home = () => {
                     }
                   }}
                   className="location-select"
-                  style={{ width: '100%', padding: '6px 8px', fontSize: '11px', fontWeight: '700', borderRadius: '8px', border: '1.5px solid #E2E8F0', outline: 'none', background: '#F8FAFC', color: '#1E293B', fontFamily: 'inherit' }}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: '13px', fontWeight: '600', borderRadius: '12px', border: '1.5px solid var(--border-color)', outline: 'none', background: '#F8FAFC', color: 'var(--text-dark)', fontFamily: 'inherit', cursor: 'pointer' }}
                 >
                   <option value="">State (Any)</option>
                   {Object.keys(LOCATION_DATA).map(state => (
@@ -911,6 +936,7 @@ const Home = () => {
               </div>
 
               <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-medium)', display: 'block', marginBottom: '6px', textAlign: 'left' }}>District</label>
                 <select
                   value={filterDistrict}
                   onChange={e => {
@@ -929,7 +955,7 @@ const Home = () => {
                   }}
                   disabled={!filterState}
                   className="location-select"
-                  style={{ width: '100%', padding: '6px 8px', fontSize: '11px', fontWeight: '700', borderRadius: '8px', border: '1.5px solid #E2E8F0', outline: 'none', background: '#F8FAFC', color: '#1E293B', opacity: !filterState ? 0.6 : 1, cursor: !filterState ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: '13px', fontWeight: '600', borderRadius: '12px', border: '1.5px solid var(--border-color)', outline: 'none', background: '#F8FAFC', color: 'var(--text-dark)', opacity: !filterState ? 0.6 : 1, cursor: !filterState ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
                 >
                   <option value="">District (Any)</option>
                   {filterState && Object.keys(LOCATION_DATA[filterState] || {}).map(dist => (
@@ -939,6 +965,7 @@ const Home = () => {
               </div>
 
               <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-medium)', display: 'block', marginBottom: '6px', textAlign: 'left' }}>City / Area</label>
                 <select
                   value={filterCity}
                   onChange={e => {
@@ -956,7 +983,7 @@ const Home = () => {
                   }}
                   disabled={!filterDistrict}
                   className="location-select"
-                  style={{ width: '100%', padding: '6px 8px', fontSize: '11px', fontWeight: '700', borderRadius: '8px', border: '1.5px solid #E2E8F0', outline: 'none', background: '#F8FAFC', color: '#1E293B', opacity: !filterDistrict ? 0.6 : 1, cursor: !filterDistrict ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: '13px', fontWeight: '600', borderRadius: '12px', border: '1.5px solid var(--border-color)', outline: 'none', background: '#F8FAFC', color: 'var(--text-dark)', opacity: !filterDistrict ? 0.6 : 1, cursor: !filterDistrict ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
                 >
                   <option value="">City / Area</option>
                   {filterState && filterDistrict && (LOCATION_DATA[filterState]?.[filterDistrict] || []).map(city => (
@@ -967,49 +994,49 @@ const Home = () => {
             </div>
 
             {/* Guest Selector & Duration Box */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.2)', paddingTop: '10px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)', textAlign: 'left' }}>Adults</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-medium)', textAlign: 'left' }}>Adults</label>
                 <select
                   value={adults}
                   onChange={e => setAdults(Number(e.target.value))}
-                  style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', border: 'none', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: '13px', fontWeight: '600', borderRadius: '12px', border: '1.5px solid var(--border-color)', outline: 'none', background: '#F8FAFC', color: 'var(--text-dark)', cursor: 'pointer' }}
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)', textAlign: 'left' }}>Children</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-medium)', textAlign: 'left' }}>Children</label>
                 <select
                   value={childrenCount}
                   onChange={e => setChildrenCount(Number(e.target.value))}
-                  style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', border: 'none', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: '13px', fontWeight: '600', borderRadius: '12px', border: '1.5px solid var(--border-color)', outline: 'none', background: '#F8FAFC', color: 'var(--text-dark)', cursor: 'pointer' }}
                 >
                   {[0, 1, 2, 3, 4, 5, 6].map(n => (
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)', textAlign: 'left' }}>Infants</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-medium)', textAlign: 'left' }}>Infants</label>
                 <select
                   value={infants}
                   onChange={e => setInfants(Number(e.target.value))}
-                  style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', border: 'none', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: '13px', fontWeight: '600', borderRadius: '12px', border: '1.5px solid var(--border-color)', outline: 'none', background: '#F8FAFC', color: 'var(--text-dark)', cursor: 'pointer' }}
                 >
                   {[0, 1, 2, 3].map(n => (
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)', textAlign: 'left' }}>Duration</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-medium)', textAlign: 'left' }}>Duration</label>
                 <select
                   value={durationDays}
                   onChange={e => setDurationDays(Number(e.target.value))}
-                  style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', border: 'none', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: '13px', fontWeight: '600', borderRadius: '12px', border: '1.5px solid var(--border-color)', outline: 'none', background: '#F8FAFC', color: 'var(--text-dark)', cursor: 'pointer' }}
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 10, 14, 21, 30].map(d => (
                     <option key={d} value={d}>{d} {d === 1 ? 'day' : 'days'}</option>
