@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Clapperboard, Compass, Car, User, Bed, Briefcase } from 'lucide-react';
+import { Home, Clapperboard, Compass, Car, User, Bed, Briefcase, Heart } from 'lucide-react';
 import './BottomNavbar.css';
 
 const BottomNavbar = () => {
@@ -12,6 +12,7 @@ const BottomNavbar = () => {
   const isHomeActive = currentPath === '/';
   const isVibesActive = currentPath === '/vibes';
   const isTripsActive = currentPath === '/trips';
+  const isFavouritesActive = currentPath === '/favourites';
   const isPgRoomsActive = currentPath === '/rentals';
   const isRidesActive = currentPath === '/ride';
   const isMoreActive = currentPath === '/profile';
@@ -44,6 +45,15 @@ const BottomNavbar = () => {
         >
           <Briefcase size={22} />
           {isTripsActive && <span className="nav-dock-label">Trips</span>}
+        </Link>
+
+        {/* Favourites */}
+        <Link 
+          to="/favourites" 
+          className={`nav-dock-item ${isFavouritesActive ? 'active' : ''}`}
+        >
+          <Heart size={22} />
+          {isFavouritesActive && <span className="nav-dock-label">Favourites</span>}
         </Link>
 
         {/* PG Rooms */}

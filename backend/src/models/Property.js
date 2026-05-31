@@ -24,7 +24,8 @@ const propertySchema = new mongoose.Schema({
   checkOutTime: { type: String, default: '11:00 AM' },
   amenities: { type: [String], default: [] }, // ac, pool, gym, parking, wifi, etc.
   photos: { type: [String], default: [] },
-  status: { type: String, enum: ['active', 'maintenance', 'blocked'], default: 'active' },
+  status: { type: String, enum: ['active', 'maintenance', 'blocked', 'pending'], default: 'pending' },
+  licenseNumber: { type: String, default: '' },
   identityProofType: { type: String, enum: ['passport', 'aadhar', 'driving_license'] },
   identityProofNumber: { type: String, default: '' },
   usps: {

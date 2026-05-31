@@ -59,8 +59,8 @@ const DetailView = () => {
   const [error, setError] = useState(null);
 
   // Booking details
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(() => localStorage.getItem('search_start_date') || '');
+  const [endDate, setEndDate] = useState(() => localStorage.getItem('search_end_date') || '');
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
@@ -72,12 +72,51 @@ const DetailView = () => {
   const [bookingSuccess, setBookingSuccess] = useState(null);
   const [bookingLoading, setBookingLoading] = useState(false);
   
-  const [adultsCount, setAdultsCount] = useState(1);
-  const [childrenCount, setChildrenCount] = useState(0);
-  const [infantsCount, setInfantsCount] = useState(0);
+  const [adultsCount, setAdultsCount] = useState(() => Number(localStorage.getItem('search_adults') || 1));
+  const [childrenCount, setChildrenCount] = useState(() => Number(localStorage.getItem('search_children') || 0));
+  const [infantsCount, setInfantsCount] = useState(() => Number(localStorage.getItem('search_infants') || 0));
   const guestCount = adultsCount + childrenCount + infantsCount;
 
-  const [guestDetails, setGuestDetails] = useState([{ name: '', age: '' }]);
+  const [guestDetails, setGuestDetails] = useState(() => {
+    const adults = Number(localStorage.getItem('search_adults') || 1);
+    const children = Number(localStorage.getItem('search_children') || 0);
+    const total = Math.max(1, adults + children);
+    return Array.from({ length: total }, () => ({ name: '', age: '' }));
+  });
+
+  const [isLiked, setIsLiked] = useState(() => {
+    try {
+      const likedList = JSON.parse(localStorage.getItem('liked_stays') || '[]');
+      return likedList.includes(id);
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (property) {
+      const likedList = JSON.parse(localStorage.getItem('liked_stays') || '[]');
+      setIsLiked(likedList.includes(property._id));
+    }
+  }, [property]);
+
+  const toggleLike = () => {
+    if (!property) return;
+    try {
+      const likedList = JSON.parse(localStorage.getItem('liked_stays') || '[]');
+      let updated;
+      if (likedList.includes(property._id)) {
+        updated = likedList.filter(lId => lId !== property._id);
+        setIsLiked(false);
+      } else {
+        updated = [...likedList, property._id];
+        setIsLiked(true);
+      }
+      localStorage.setItem('liked_stays', JSON.stringify(updated));
+    } catch (err) {
+      console.error('Failed to toggle favorite stay:', err);
+    }
+  };
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [expandedRoomId, setExpandedRoomId] = useState(null);
   const [bringPet, setBringPet] = useState(false);
@@ -191,12 +230,14 @@ const DetailView = () => {
       }
       
       // Default dates (today and tomorrow)
+      const localStart = localStorage.getItem('search_start_date');
+      const localEnd = localStorage.getItem('search_end_date');
       const today = new Date();
       const tomorrow = new Date();
       tomorrow.setDate(today.getDate() + 1);
 
-      setStartDate(today.toISOString().split('T')[0]);
-      setEndDate(tomorrow.toISOString().split('T')[0]);
+      setStartDate(localStart || today.toISOString().split('T')[0]);
+      setEndDate(localEnd || tomorrow.toISOString().split('T')[0]);
     } catch (err) {
       setError(err.message || 'Failed to load property details');
     } finally {
@@ -440,59 +481,51 @@ const DetailView = () => {
     <div className="detail-page container">
       <Link to="/" className="btn-back flex-center"><ArrowLeft size={16} /> {translate('back_to_home', language)}</Link>
       
-      {/* Visual Image Header (Carousel) */}
-      <section className="detail-image-gallery card" style={{ position: 'relative', overflow: 'hidden' }}>
-        <div style={{ width: '100%', height: '100%', display: 'flex', transition: 'transform 0.5s ease', transform: `translateX(-${activePhotoIdx * 100}%)` }}>
-          {displayPhotos.map((url, index) => (
-            <img 
-              key={index}
-              src={url} 
-              alt={`${property.name} - ${index + 1}`} 
-              className="main-gallery-image"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', flexShrink: 0 }}
-            />
+      {/* Visual Image Header (Split Grid Media Gallery) */}
+      <section className="detail-media-gallery">
+        {/* Left Side: 1 large main active image */}
+        <div className="main-image-container card" style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+          <img 
+            src={displayPhotos[activePhotoIdx] || 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80'} 
+            alt={property.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'all 0.3s ease' }}
+          />
+          <button 
+            className={`btn-favorite-circle ${isLiked ? 'liked' : ''}`} 
+            style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 11, cursor: 'pointer', backgroundColor: isLiked ? '#FEE2E2' : 'white', color: isLiked ? '#EF4444' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+            onClick={toggleLike}
+          >
+            <Heart size={20} fill={isLiked ? '#EF4444' : 'none'} />
+          </button>
+        </div>
+
+        {/* Right Side: 3 vertical smaller thumbnail previews */}
+        <div className="thumbnails-column" style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+          {displayPhotos.slice(0, 3).map((url, index) => (
+            <div 
+              key={index} 
+              className={`thumbnail-card card ${activePhotoIdx === index ? 'active' : ''}`} 
+              onClick={() => setActivePhotoIdx(index)}
+              style={{ flex: 1, overflow: 'hidden', cursor: 'pointer', border: activePhotoIdx === index ? '3px solid var(--primary-color)' : '1px solid var(--border-color)', transform: activePhotoIdx === index ? 'scale(0.98)' : 'none', transition: 'all 0.2s ease' }}
+            >
+              <img 
+                src={url} 
+                alt={`${property.name} thumbnail ${index + 1}`} 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+          ))}
+          {/* If there are fewer than 3 photos, fill with placeholders */}
+          {displayPhotos.length < 3 && Array.from({ length: 3 - displayPhotos.length }).map((_, idx) => (
+            <div 
+              key={`empty-${idx}`} 
+              className="thumbnail-card card empty-placeholder" 
+              style={{ flex: 1, backgroundColor: '#F1F5F9', border: '1px dashed #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: '600' }}>No more photos</span>
+            </div>
           ))}
         </div>
-        
-        {displayPhotos.length > 1 && (
-          <>
-            <button 
-              type="button"
-              className="carousel-btn prev-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setActivePhotoIdx(prev => (prev === 0 ? displayPhotos.length - 1 : prev - 1));
-              }}
-              style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10 }}
-            >
-              ❮
-            </button>
-            <button 
-              type="button"
-              className="carousel-btn next-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setActivePhotoIdx(prev => (prev === displayPhotos.length - 1 ? 0 : prev + 1));
-              }}
-              style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10 }}
-            >
-              ❯
-            </button>
-            <div style={{ position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '8px', zIndex: 10 }}>
-              {displayPhotos.map((_, index) => (
-                <div 
-                  key={index}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActivePhotoIdx(index);
-                  }}
-                  style={{ width: '8px', height: '8px', borderRadius: '50%', background: activePhotoIdx === index ? 'var(--primary-color)' : 'rgba(255,255,255,0.6)', cursor: 'pointer', transition: 'background 0.3s' }}
-                />
-              ))}
-            </div>
-          </>
-        )}
-        <button className="btn-favorite-circle" style={{ zIndex: 11 }}><Heart size={20} /></button>
       </section>
 
       {/* Split details content */}
@@ -515,36 +548,36 @@ const DetailView = () => {
 
           <hr className="divider" />
 
-          {/* Owner details card */}
-          <div className="owner-profile-card flex-between">
-            <div className="owner-avatar flex-center">
-              {property.owner?.profileImage ? (
-                <img 
-                  src={property.owner.profileImage} 
-                  alt={property.owner.name} 
-                  style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-color)', marginRight: '10px' }}
-                  onError={e => { e.target.style.display = 'none'; }}
-                />
-              ) : (
-                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '800', fontSize: '18px', marginRight: '10px' }}>
-                  {(property.owner?.name || 'H').charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="owner-meta-text">
-                <span className="owner-name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {property.owner?.name || 'Albert Host'}
-                  {property.owner?.isLicensed && (
-                    <span title="Verified Host" style={{ background: '#22C55E', color: 'white', fontSize: '9px', fontWeight: '800', padding: '2px 6px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                      ✓ Verified
-                    </span>
-                  )}
+          {/* Stay Registry & Information card */}
+          <div className="owner-profile-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0', textAlign: 'left' }}>
+            <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--primary-color)', letterSpacing: '0.5px' }}>Stay Registry & Information</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+              <div>
+                <span style={{ fontSize: '10px', color: 'var(--text-light)', display: 'block' }}>Stay License Number</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-dark)' }}>
+                  {property.licenseNumber ? property.licenseNumber : 'Pending Verification'}
                 </span>
-                <span className="owner-lbl">{translate('property_host', language)}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: '10px', color: 'var(--text-light)', display: 'block' }}>Category</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-dark)', textTransform: 'capitalize' }}>
+                  {property.category || property.type || 'Stay'}
+                </span>
               </div>
             </div>
-            <div className="owner-contact flex-center">
-              <Phone size={14} />
-              <span>{property.owner?.phone || translate('contact_verified', language)}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+              <div>
+                <span style={{ fontSize: '10px', color: 'var(--text-light)', display: 'block' }}>Verification Status</span>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <CheckCircle size={14} /> Approved & Active
+                </span>
+              </div>
+              <div>
+                <span style={{ fontSize: '10px', color: 'var(--text-light)', display: 'block' }}>Brokerage Rate</span>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-dark)' }}>
+                  0% (Brokerage Free)
+                </span>
+              </div>
             </div>
           </div>
 

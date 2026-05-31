@@ -5,17 +5,20 @@
   "workspaces": [
     "customer-app",
     "host-app",
-    "backend"
+    "backend",
+    "admin-app"
   ],
   "scripts": {
     "install:all": "npm install",
     "dev:backend": "npm --prefix backend run dev",
     "dev:customer": "npm --prefix customer-app run dev",
     "dev:host": "npm --prefix host-app run dev",
+    "dev:admin": "npm --prefix admin-app run dev",
     "dev:frontend": "npm --prefix customer-app run dev",
     "start:backend": "npm --prefix backend start",
     "start:customer": "npm --prefix customer-app run build",
     "start:host": "npm --prefix host-app run build",
+    "start:admin": "npm --prefix admin-app run build",
     "start:frontend": "npm --prefix customer-app run build"
   }
 }

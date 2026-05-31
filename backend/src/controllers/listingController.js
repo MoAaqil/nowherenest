@@ -55,8 +55,16 @@ exports.getListings = async (req, res) => {
   try {
     const { type, category, search, amenities } = req.query;
     
+    // Locate all verified hosts
+    const User = require('../models/User');
+    const verifiedHosts = await User.find({ role: { $in: ['owner', 'admin'] }, isLicensed: true }).select('_id');
+    const hostIds = verifiedHosts.map(u => u._id);
+
     // We will query Property collection and map
-    let query = { status: 'active' };
+    let query = { 
+      status: 'active',
+      owner: { $in: hostIds }
+    };
 
     if (search) {
       query.$or = [

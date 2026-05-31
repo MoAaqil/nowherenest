@@ -187,7 +187,46 @@ const Home = () => {
   const [quickBudget, setQuickBudget] = useState('');
 
   // GPS range slider
-  const [gpsRange, setGpsRange] = useState(40);
+  const [gpsRange, setGpsRange] = useState(() => {
+    const saved = localStorage.getItem('gps_range');
+    return saved !== null ? Number(saved) : 40;
+  });
+
+  const [sortBy, setSortBy] = useState('proximity');
+
+  const [adults, setAdults] = useState(() => Number(localStorage.getItem('search_adults') || 2));
+  const [childrenCount, setChildrenCount] = useState(() => Number(localStorage.getItem('search_children') || 0));
+  const [infants, setInfants] = useState(() => Number(localStorage.getItem('search_infants') || 0));
+  const [durationDays, setDurationDays] = useState(() => Number(localStorage.getItem('search_days') || 1));
+
+  useEffect(() => {
+    localStorage.setItem('gps_range', gpsRange.toString());
+  }, [gpsRange]);
+
+  useEffect(() => {
+    localStorage.setItem('search_adults', adults.toString());
+  }, [adults]);
+
+  useEffect(() => {
+    localStorage.setItem('search_children', childrenCount.toString());
+  }, [childrenCount]);
+
+  useEffect(() => {
+    localStorage.setItem('search_infants', infants.toString());
+  }, [infants]);
+
+  useEffect(() => {
+    localStorage.setItem('search_days', durationDays.toString());
+    
+    // Auto-calculate start and end dates
+    const today = new Date();
+    const startStr = today.toISOString().split('T')[0];
+    const end = new Date();
+    end.setDate(today.getDate() + durationDays);
+    const endStr = end.toISOString().split('T')[0];
+    localStorage.setItem('search_start_date', startStr);
+    localStorage.setItem('search_end_date', endStr);
+  }, [durationDays]);
 
   // Radar scanning
   const [isSearching, setIsSearching] = useState(false);
@@ -236,7 +275,7 @@ const Home = () => {
     fetchStays(searchQuery, selectedCategory, gpsRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    selectedCategory, currencyChanged, gpsRange,
+    selectedCategory, currencyChanged, gpsRange, sortBy,
     minPrice, maxPrice, quickBudget, selectedAmenities, minRating,
     selectedPropertyTypes, selectedActivities, selectedPaymentOptions, selectedRoomOffers,
     selectedNeighborhoods, selectedBedrooms, onlyVerifiedHosts, minReviewScore,
@@ -370,11 +409,19 @@ const Home = () => {
         stays = stays.filter(s => s.distance !== null && s.distance <= rangeVal);
       }
 
-      stays.sort((a, b) => {
-        if (a.distance === null) return 1;
-        if (b.distance === null) return -1;
-        return a.distance - b.distance;
-      });
+      if (sortBy === 'proximity') {
+        stays.sort((a, b) => {
+          if (a.distance === null) return 1;
+          if (b.distance === null) return -1;
+          return a.distance - b.distance;
+        });
+      } else if (sortBy === 'priceAsc') {
+        stays.sort((a, b) => (a.price || 0) - (b.price || 0));
+      } else if (sortBy === 'priceDesc') {
+        stays.sort((a, b) => (b.price || 0) - (a.price || 0));
+      } else if (sortBy === 'rating') {
+        stays.sort((a, b) => (b.starRating || 0) - (a.starRating || 0));
+      }
 
       const refLat = stays[0]?.location?.lat || userLat;
       const refLng = stays[0]?.location?.lng || userLng;
@@ -805,7 +852,7 @@ const Home = () => {
           <form
             onSubmit={handleSearchSubmit}
             className="hero-search-bar"
-            style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'white', padding: '16px', borderRadius: '16px', boxShadow: 'var(--shadow-md)', maxWidth: '640px' }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)', padding: '16px', borderRadius: '16px', boxShadow: 'var(--shadow-md)', maxWidth: '640px' }}
           >
             <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
               <div className="search-input-wrapper" style={{ flex: 1, margin: 0 }}>
@@ -834,7 +881,7 @@ const Home = () => {
             </div>
 
             {/* Neighborhood Location Picker Helper */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', borderTop: '1px solid #F1F5F9', paddingTop: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.2)', paddingTop: '10px' }}>
               <div>
                 <select
                   value={filterState}
@@ -918,6 +965,58 @@ const Home = () => {
                 </select>
               </div>
             </div>
+
+            {/* Guest Selector & Duration Box */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.2)', paddingTop: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)', textAlign: 'left' }}>Adults</label>
+                <select
+                  value={adults}
+                  onChange={e => setAdults(Number(e.target.value))}
+                  style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', border: 'none', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)', textAlign: 'left' }}>Children</label>
+                <select
+                  value={childrenCount}
+                  onChange={e => setChildrenCount(Number(e.target.value))}
+                  style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', border: 'none', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+                >
+                  {[0, 1, 2, 3, 4, 5, 6].map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)', textAlign: 'left' }}>Infants</label>
+                <select
+                  value={infants}
+                  onChange={e => setInfants(Number(e.target.value))}
+                  style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', border: 'none', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+                >
+                  {[0, 1, 2, 3].map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)', textAlign: 'left' }}>Duration</label>
+                <select
+                  value={durationDays}
+                  onChange={e => setDurationDays(Number(e.target.value))}
+                  style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', border: 'none', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 10, 14, 21, 30].map(d => (
+                    <option key={d} value={d}>{d} {d === 1 ? 'day' : 'days'}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </form>
         </div>
 
@@ -978,16 +1077,32 @@ const Home = () => {
       {/* 3. Category Chips */}
       <section className="category-selection-section">
         <h3>{translate('find_perfect', language)}</h3>
-        <div className="category-chips flex">
-          <button className={`chip ${selectedCategory === 'cottage' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('cottage'); }}>
-            {translate('cottages', language)}
-          </button>
-          <button className={`chip ${selectedCategory === 'hotel' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('hotel'); }}>
-            {translate('hotels', language)}
-          </button>
-          <button className={`chip ${selectedCategory === 'apartment' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('apartment'); }}>
-            {translate('apartments', language)}
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginTop: '8px' }}>
+          <div className="category-chips flex" style={{ margin: 0 }}>
+            <button className={`chip ${selectedCategory === 'cottage' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('cottage'); }}>
+              {translate('cottages', language)}
+            </button>
+            <button className={`chip ${selectedCategory === 'hotel' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('hotel'); }}>
+              {translate('hotels', language)}
+            </button>
+            <button className={`chip ${selectedCategory === 'apartment' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('apartment'); }}>
+              {translate('apartments', language)}
+            </button>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-medium)' }}>Sort By:</span>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              style={{ padding: '8px 12px', fontSize: '13px', fontWeight: '700', borderRadius: '12px', border: '1.5px solid var(--border-color)', outline: 'none', background: '#FFFFFF', color: '#1E293B', cursor: 'pointer' }}
+            >
+              <option value="proximity">Proximity (Nearest)</option>
+              <option value="priceAsc">Price: Low to High</option>
+              <option value="priceDesc">Price: High to Low</option>
+              <option value="rating">Best Rated</option>
+            </select>
+          </div>
         </div>
       </section>
 
@@ -1077,7 +1192,7 @@ const Home = () => {
                     </div>
 
                     <div className="card-action-row flex-between">
-                      <span className="owner-name-tag">{translate('by_host', language)} {listing.owner?.name || 'Local Host'}</span>
+                      <span className="owner-name-tag" style={{ color: '#16A34A', fontWeight: '700' }}>✓ Approved Stay</span>
                       <Link to={`/listing/${listing._id}`} className="btn btn-secondary btn-small">{translate('book_now', language)}</Link>
                     </div>
                   </div>

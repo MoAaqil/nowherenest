@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Vibes from './pages/Vibes';
 import Trips from './pages/Trips';
+import Favourites from './pages/Favourites';
 import SplashScreen from './components/SplashScreen';
 import BottomNavbar from './components/BottomNavbar';
 
@@ -113,7 +114,7 @@ const AppLayout = () => {
       {user && splashActive && <SplashScreen onFinish={handleSplashFinish} />}
       
       {/* Hide navbar on profile and vibes pages to match mobile view screenshots */}
-      {user && !['/profile', '/vibes', '/trips'].includes(location.pathname) && <Navbar />}
+      {user && !['/profile', '/vibes', '/trips', '/favourites'].includes(location.pathname) && <Navbar />}
       
       <div style={{ flex: 1 }}>
         <Routes>
@@ -127,6 +128,7 @@ const AppLayout = () => {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/vibes" element={<ProtectedRoute><Vibes /></ProtectedRoute>} />
           <Route path="/trips" element={<ProtectedRoute><Trips /></ProtectedRoute>} />
+          <Route path="/favourites" element={<ProtectedRoute><Favourites /></ProtectedRoute>} />
           
           {/* Protected Admin/Owner dashboards */}
           <Route 
@@ -145,10 +147,10 @@ const AppLayout = () => {
       </div>
 
       {/* Hide footer on profile and vibes pages to match mobile view screenshots */}
-      {user && !['/profile', '/vibes', '/trips'].includes(location.pathname) && <Footer />}
+      {user && !['/profile', '/vibes', '/trips', '/favourites'].includes(location.pathname) && <Footer />}
       
       {/* Floating Bottom Nav bar for mobile concept */}
-      {user && ['/', '/rentals', '/ride', '/profile', '/vibes', '/trips'].includes(location.pathname) && <BottomNavbar />}
+      {user && ['/', '/rentals', '/ride', '/profile', '/vibes', '/trips', '/favourites'].includes(location.pathname) && <BottomNavbar />}
     </div>
   );
 };

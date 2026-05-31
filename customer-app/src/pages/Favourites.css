@@ -1,0 +1,230 @@
+.favourites-page {
+  padding-top: 32px;
+  padding-bottom: 120px;
+}
+
+.favourites-header {
+  text-align: left;
+  margin-bottom: 32px;
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-top: 12px;
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+  font-size: 15px;
+  color: var(--text-medium);
+}
+
+.favourites-tabs {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid var(--border-color);
+  border-radius: 9999px;
+  padding: 6px;
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 36px;
+  box-shadow: var(--shadow-sm);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-medium);
+  transition: all var(--transition-fast);
+}
+
+.tab-btn:hover {
+  background: rgba(10, 59, 42, 0.05);
+  color: var(--primary-color);
+}
+
+.tab-btn.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(10, 59, 42, 0.15);
+}
+
+.favourites-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .favourites-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.remove-fav-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: white;
+  color: #EF4444;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  transition: all var(--transition-fast);
+}
+
+.remove-fav-btn:hover {
+  transform: scale(1.1);
+  background: #FEE2E2;
+}
+
+.empty-favourites {
+  flex-direction: column;
+  padding: 60px 40px;
+  background: white;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.empty-favourites h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.empty-favourites p {
+  font-size: 14px;
+  color: var(--text-medium);
+  line-height: 1.5;
+}
+
+/* Vibe Card inside Favourites */
+.vibe-fav-card {
+  position: relative;
+  height: 320px;
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.vibe-video-preview {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  position: relative;
+  background-image: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.85)), url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80');
+  background-size: cover;
+  background-position: center;
+}
+
+.video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.play-badge {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(10, 59, 42, 0.85);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.vibe-fav-card:hover .play-badge {
+  transform: scale(1.1);
+  background: var(--primary-color);
+}
+
+.vibe-host-tag {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.vibe-caption-bg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 20px;
+  text-align: left;
+  color: white;
+}
+
+.vibe-caption-bg h4 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.vibe-caption-bg p {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vibe-stay-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary-color);
+  color: white;
+  padding: 6px 12px;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  transition: all var(--transition-fast);
+}
+
+.vibe-stay-link:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(10, 59, 42, 0.1);
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+.loading-spinner-wrapper {
+  flex-direction: column;
+  padding: 80px 0;
+  font-weight: 600;
+  color: var(--text-medium);
+}

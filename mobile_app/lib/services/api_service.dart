@@ -4,8 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class ApiService {
-  // Use 10.0.2.2 for Android Emulator, or localhost for iOS simulator
-  static const String baseUrl = 'http://localhost:5000/api';
+  static const String baseUrl = 'https://nowherenest-backend.onrender.com/api';
 
   static Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();

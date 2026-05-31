@@ -443,3 +443,31 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Media split grid rules */
+.detail-media-gallery {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+  height: 420px;
+  margin-bottom: 32px;
+}
+
+.thumbnail-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.thumbnail-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 768px) {
+  .detail-media-gallery {
+    grid-template-columns: 1fr;
+    height: 300px;
+  }
+  .thumbnails-column {
+    display: none !important;
+  }
+}

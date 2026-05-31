@@ -160,6 +160,20 @@ const Dashboard = () => {
 
       {error && <div className="error-card">{error}</div>}
 
+      {user && !user.isLicensed && (
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', border: '1.5px solid #F59E0B', borderRadius: '16px', padding: '16px 24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)', textAlign: 'left' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#D97706', color: 'white', flexShrink: 0 }}>
+            <Clock size={20} />
+          </div>
+          <div>
+            <h5 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#78350F' }}>Verification Pending</h5>
+            <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#92400E', lineHeight: '1.4' }}>
+              Your host account is currently pending manual verification by the Nowhere Nest administration. Any stays you add will not be visible on the customer explore dashboard until your account is fully licensed.
+            </p>
+          </div>
+        </div>
+      )}
+
       {stats && (
         <>
           {/* Metrics summary cards */}

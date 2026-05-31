@@ -162,8 +162,8 @@ exports.createBooking = async (req, res) => {
 
     const totalAmount = baseAmount + uspsAmount - discountApplied;
 
-    // Determine platform commission (Default 10%)
-    const rateEnv = parseFloat(process.env.COMMISSION_RATE) || 0.10;
+    // Determine platform commission (Default 8%)
+    const rateEnv = parseFloat(process.env.COMMISSION_RATE) || 0.08;
     const commissionRate = Math.min(Math.max(rateEnv, 0.05), 0.12);
     const commissionAmount = Math.round(totalAmount * commissionRate);
     const ownerAmount = totalAmount - commissionAmount;
