@@ -20,6 +20,9 @@ const vibeSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User' 
   }],
+  status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+  rejectionReason: { type: String, default: '' },
+  vibeType: { type: String, enum: ['partner', 'credited', 'free'], default: 'free' },
   createdAt: { type: Date, default: Date.now }
 });
 

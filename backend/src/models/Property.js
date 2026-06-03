@@ -14,10 +14,15 @@ const propertySchema = new mongoose.Schema({
     enum: ['hotel', 'resort', 'villa', 'homestay', 'apartment', 'guesthouse'], 
     required: true 
   },
+  landscapeCategory: {
+    type: String,
+    enum: ['city', 'hillstation', 'beach', 'forest', 'desert', 'village', 'island', 'other'],
+    default: 'city'
+  },
   address: { type: String, required: true },
   location: {
-    lat: { type: Number, required: true, default: 0 },
-    lng: { type: Number, required: true, default: 0 }
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [0, 0] } // [lng, lat]
   },
   starRating: { type: Number, default: 3, min: 1, max: 5 },
   checkInTime: { type: String, default: '12:00 PM' },
@@ -26,7 +31,7 @@ const propertySchema = new mongoose.Schema({
   photos: { type: [String], default: [] },
   status: { type: String, enum: ['active', 'maintenance', 'blocked', 'pending'], default: 'pending' },
   licenseNumber: { type: String, default: '' },
-  identityProofType: { type: String, enum: ['passport', 'aadhar', 'driving_license'] },
+  identityProofType: { type: String, enum: ['aadhar', 'driving_license'], default: 'aadhar' },
   identityProofNumber: { type: String, default: '' },
   usps: {
     type: [{
@@ -37,7 +42,12 @@ const propertySchema = new mongoose.Schema({
     }],
     default: []
   },
+  identityProofPhotoUrl: { type: String, default: '' },
+  district: { type: String, default: '' },
+  state: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
+
+propertySchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Property', propertySchema);

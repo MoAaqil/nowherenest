@@ -502,3 +502,252 @@ body {
   font-weight: 600;
   font-size: 14px;
 }
+
+/* Premium Invoice Group Accordion Styling */
+.grouped-stay-invoice-card {
+  border: 1px solid rgba(10, 59, 42, 0.08) !important;
+  border-radius: var(--border-radius-md) !important;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.grouped-stay-invoice-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(10, 59, 42, 0.15) !important;
+}
+
+.grouped-stay-invoice-header {
+  width: 100%;
+  padding: 18px 24px !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.9)) !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.grouped-stay-invoice-header:hover {
+  background: linear-gradient(135deg, rgba(232, 240, 236, 0.7), rgba(255, 255, 255, 0.9)) !important;
+}
+
+.invoice-badge-count {
+  background: var(--primary-color) !important;
+  color: white !important;
+  font-size: 12px;
+  font-weight: 800;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  box-shadow: 0 2px 6px rgba(10, 59, 42, 0.2);
+}
+
+.invoice-details-table-wrapper {
+  padding: 20px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-top: 1px solid rgba(10, 59, 42, 0.06);
+  animation: slide-down 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.invoice-ref-code {
+  background: rgba(10, 59, 42, 0.05);
+  color: var(--primary-color);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* ─── Mobile Hamburger Toggle ─────────────────────────────────────────────── */
+.mobile-menu-toggle {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 300;
+  background: #0A3B2A;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(10,59,42,0.3);
+  font-size: 20px;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+
+/* ─── Tablet Layout (≤ 1024px) ───────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .admin-sidebar {
+    width: 220px;
+  }
+  .admin-main {
+    margin-left: 220px;
+    padding: 28px 24px;
+  }
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ─── Mobile Layout (≤ 768px) ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Hamburger button */
+  .mobile-menu-toggle {
+    display: flex;
+  }
+
+  /* Sidebar slides in/out */
+  .admin-sidebar {
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200;
+  }
+
+  .admin-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* Overlay backdrop */
+  .sidebar-overlay.mobile-open {
+    display: block;
+  }
+
+  /* Main content full width */
+  .admin-main {
+    margin-left: 0;
+    padding: 64px 16px 24px; /* top padding for hamburger */
+    max-width: 100%;
+  }
+
+  /* Page header stack */
+  .flex-between.main-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .main-header h1 {
+    font-size: 22px;
+  }
+
+  /* Cards full width */
+  .card {
+    padding: 16px;
+  }
+
+  /* Stats grid 1 col */
+  .grid-cols-4 {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* Tables scroll horizontally */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 10px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* Tab panels */
+  .tab-panel {
+    overflow-x: hidden;
+  }
+
+  /* Hosts table phone search */
+  .hosts-panel form {
+    flex-wrap: wrap;
+  }
+
+  /* Vibe panel cards */
+  .vibes-panel > div > div {
+    flex-direction: column;
+  }
+
+  /* Modal full screen on mobile */
+  .modal-overlay {
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  .refresh-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  /* Region districts table */
+  .regions-panel .admin-table {
+    min-width: 480px;
+  }
+}
+
+/* ─── Small Mobile (≤ 480px) ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .grid-cols-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-main {
+    padding: 64px 12px 24px;
+  }
+
+  .card {
+    padding: 12px;
+  }
+
+  .main-header h1 {
+    font-size: 20px;
+  }
+
+  /* Hosts table: hide less critical columns */
+  .hosts-panel .admin-table th:nth-child(4),
+  .hosts-panel .admin-table td:nth-child(4) {
+    display: none; /* hide Aadhar column on very small screens */
+  }
+}

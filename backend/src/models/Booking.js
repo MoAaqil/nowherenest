@@ -62,6 +62,17 @@ const bookingSchema = new mongoose.Schema({
   // Booking type: nightly (regular) or hourly (fresher/day-use checkout)
   bookingType: { type: String, enum: ['nightly', 'hourly'], default: 'nightly' },
   durationHours: { type: Number, default: null }, // for hourly bookings
+  selectedUsps: {
+    type: [{
+      title: { type: String, required: true },
+      description: { type: String, default: '' },
+      price: { type: Number, required: true, default: 0 },
+      chargeType: { type: String, enum: ['per_person', 'per_family'], default: 'per_family' },
+      scheduledDate: { type: Date, default: null },
+      status: { type: String, enum: ['pending', 'scheduled', 'completed', 'cancelled'], default: 'pending' }
+    }],
+    default: []
+  },
   // Post-stay review submitted by customer
   review: {
     rating: { type: Number, min: 1, max: 5, default: null },

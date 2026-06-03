@@ -18,6 +18,41 @@ const Bookings = () => {
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
 
+  // Experience Schedules state: { [bookingId-uspId]: { date: string, status: string } }
+  const [schedules, setSchedules] = useState({});
+
+  const handleScheduleChange = (bookingId, uspId, field, value) => {
+    setSchedules(prev => ({
+      ...prev,
+      [`${bookingId}-${uspId}`]: {
+        ...prev[`${bookingId}-${uspId}`],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSaveSchedule = async (bookingId, uspId) => {
+    const key = `${bookingId}-${uspId}`;
+    const dateVal = schedules[key]?.date;
+    const statusVal = schedules[key]?.status;
+    
+    if (!dateVal && !statusVal) {
+      alert('Please select a date or status to update.');
+      return;
+    }
+    
+    try {
+      await api.bookings.updateUspSchedule(bookingId, uspId, {
+        scheduledDate: dateVal ? new Date(dateVal).toISOString() : undefined,
+        status: statusVal
+      });
+      alert('Experience schedule updated successfully!');
+      fetchBookings();
+    } catch (err) {
+      alert(err.message || 'Failed to update schedule');
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
   }, []);
@@ -137,6 +172,53 @@ const Bookings = () => {
                   <td>
                     <div style={{ fontWeight: '600' }}>{b.property?.name}</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-medium)', textTransform: 'capitalize' }}>{b.room?.category} category</div>
+                    {b.selectedUsps && b.selectedUsps.length > 0 && (
+                      <div style={{ marginTop: '10px', background: '#F8FAFC', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '10px', minWidth: '220px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-color)', marginBottom: '6px' }}>🎒 Selected Experiences:</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {b.selectedUsps.map(usp => (
+                            <div key={usp._id} style={{ fontSize: '11px', background: '#FFFFFF', padding: '6px', borderRadius: '4px', border: '1px solid #E2E8F0' }}>
+                              <div><strong>{usp.title}</strong></div>
+                              <div style={{ color: 'var(--text-medium)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                                <span>Status: <span style={{ fontWeight: 'bold', color: usp.status === 'scheduled' ? '#2563EB' : usp.status === 'completed' ? '#16A34A' : '#475569' }}>{usp.status.toUpperCase()}</span></span>
+                                <span>Date: {usp.scheduledDate ? new Date(usp.scheduledDate).toLocaleString('en-IN') : 'Not Scheduled'}</span>
+                              </div>
+                              
+                              <div style={{ display: 'flex', gap: '4px', marginTop: '6px', flexDirection: 'column' }}>
+                                <input 
+                                  type="datetime-local" 
+                                  className="form-control" 
+                                  style={{ fontSize: '10px', padding: '2px 4px', height: '24px', width: '100%' }}
+                                  value={schedules[`${b._id}-${usp._id}`]?.date || ''}
+                                  onChange={e => handleScheduleChange(b._id, usp._id, 'date', e.target.value)}
+                                />
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <select
+                                    className="form-control"
+                                    style={{ fontSize: '10px', padding: '2px 4px', height: '24px', flex: 1 }}
+                                    value={schedules[`${b._id}-${usp._id}`]?.status || usp.status}
+                                    onChange={e => handleScheduleChange(b._id, usp._id, 'status', e.target.value)}
+                                  >
+                                    <option value="pending">Pending</option>
+                                    <option value="scheduled">Scheduled</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                  </select>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-primary"
+                                    style={{ padding: '0 8px', fontSize: '10px', height: '24px', borderRadius: '4px', color: 'white', background: 'var(--primary-color)' }}
+                                    onClick={() => handleSaveSchedule(b._id, usp._id)}
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td>
                     <div style={{ fontWeight: '600' }}>{new Date(b.startDate).toLocaleDateString()} - {new Date(b.endDate).toLocaleDateString()}</div>

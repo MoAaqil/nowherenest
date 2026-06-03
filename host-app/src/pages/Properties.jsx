@@ -110,6 +110,7 @@ const Properties = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('hotel');
+  const [landscapeCategory, setLandscapeCategory] = useState('city');
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState('9.5929');
   const [lng, setLng] = useState('76.4227');
@@ -120,7 +121,7 @@ const Properties = () => {
   const [photosList, setPhotosList] = useState([]);
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
   const [brokenImages, setBrokenImages] = useState({});
-  const [identityProofType, setIdentityProofType] = useState('passport');
+  const [identityProofType, setIdentityProofType] = useState('aadhar');
   const [identityProofNumber, setIdentityProofNumber] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
@@ -137,6 +138,32 @@ const Properties = () => {
   const [newUspDesc, setNewUspDesc] = useState('');
   const [newUspPrice, setNewUspPrice] = useState('');
   const [newUspChargeType, setNewUspChargeType] = useState('per_family');
+
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  const handleAutoFetchCoordinates = async () => {
+    if (!selectedState || !selectedDistrict || !selectedCity || !streetAddress) {
+      alert("Please fill in State, District, City, and Street Address first.");
+      return;
+    }
+    setIsFetchingLocation(true);
+    try {
+      const query = `${streetAddress}, ${selectedCity}, ${selectedDistrict}, ${selectedState}`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' }});
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setLat(parseFloat(data[0].lat).toFixed(6));
+        setLng(parseFloat(data[0].lon).toFixed(6));
+      } else {
+        alert("Couldn't automatically find the coordinates. Please manually click on the map or enter lat/lng.");
+      }
+    } catch (err) {
+      alert("Error fetching location.");
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
 
   const handleAddPhoto = async (urlToResolve) => {
     const trimmed = urlToResolve.trim();
@@ -192,6 +219,7 @@ const Properties = () => {
     setName('');
     setDescription('');
     setType('hotel');
+    setLandscapeCategory('city');
     setAddress('');
     setLat('9.5929');
     setLng('76.4227');
@@ -201,7 +229,7 @@ const Properties = () => {
     setSelectedAmenities([]);
     setPhotosList([]);
     setNewPhotoUrl('');
-    setIdentityProofType('passport');
+    setIdentityProofType('aadhar');
     setIdentityProofNumber('');
     setSelectedState('');
     setSelectedDistrict('');
@@ -221,9 +249,10 @@ const Properties = () => {
     setName(property.name);
     setDescription(property.description || '');
     setType(property.type);
+    setLandscapeCategory(property.landscapeCategory || 'city');
     setAddress(property.address);
-    setLat(property.location?.lat?.toString() || '0');
-    setLng(property.location?.lng?.toString() || '0');
+    setLat(property.location?.coordinates?.[1]?.toString() || '0');
+    setLng(property.location?.coordinates?.[0]?.toString() || '0');
     setStarRating(property.starRating?.toString() || '3');
     setCheckInTime(property.checkInTime || '12:00 PM');
     setCheckOutTime(property.checkOutTime || '11:00 AM');
@@ -238,7 +267,7 @@ const Properties = () => {
     setPhotosList(photosArray);
     
     setNewPhotoUrl('');
-    setIdentityProofType(property.identityProofType || 'passport');
+    setIdentityProofType(property.identityProofType || 'aadhar');
     setIdentityProofNumber(property.identityProofNumber || '');
     
     // Parse address parts for dropdowns
@@ -316,10 +345,11 @@ const Properties = () => {
       name,
       description,
       type,
+      landscapeCategory,
       address: compiledAddress,
       location: {
-        lat: parseFloat(lat) || 0,
-        lng: parseFloat(lng) || 0
+        type: 'Point',
+        coordinates: [parseFloat(lng) || 0, parseFloat(lat) || 0]
       },
       starRating: parseInt(starRating) || 3,
       checkInTime,
@@ -328,7 +358,9 @@ const Properties = () => {
       photos: finalPhotos.length > 0 ? finalPhotos : ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'],
       identityProofType,
       identityProofNumber,
-      usps: formUsps
+      usps: formUsps,
+      state: selectedState || '',
+      district: selectedDistrict || '',
     };
 
     try {
@@ -393,6 +425,7 @@ const Properties = () => {
                     : (typeof p.photos === 'string' && p.photos ? p.photos : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80')
                   } 
                   alt={p.name} 
+                  referrerPolicy="no-referrer"
                 />
                 <span className="type-badge">{p.type}</span>
               </div>
@@ -465,7 +498,7 @@ const Properties = () => {
             )}
 
             <form onSubmit={handleFormSubmit} className="property-form">
-              <div className="form-grid-2">
+              <div className="form-grid-3">
                 <div className="form-group">
                   <label>Property Name</label>
                   <input 
@@ -488,6 +521,24 @@ const Properties = () => {
                     {PROPERTY_TYPES.map(t => (
                       <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Landscape Category</label>
+                  <select 
+                    value={landscapeCategory} 
+                    onChange={e => setLandscapeCategory(e.target.value)} 
+                    className="form-control"
+                  >
+                    <option value="city">City / Urban</option>
+                    <option value="hillstation">Hillstation / Mountains</option>
+                    <option value="beach">Beach / Coastal</option>
+                    <option value="forest">Forest / Jungle</option>
+                    <option value="desert">Desert / Safari</option>
+                    <option value="village">Village / Rural</option>
+                    <option value="island">Island / Backwaters</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
               </div>
@@ -575,7 +626,12 @@ const Properties = () => {
               </div>
 
               <div className="form-group">
-                <label>Select Location on Map</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ margin: 0 }}>Select Location on Map</label>
+                  <button type="button" onClick={handleAutoFetchCoordinates} className="btn btn-outline" style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '4px' }} disabled={isFetchingLocation}>
+                    {isFetchingLocation ? 'Fetching...' : '📍 Auto-fetch from Address'}
+                  </button>
+                </div>
                 <div style={{ height: '220px', width: '100%', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
                   <LeafletMap 
                     listings={[{
@@ -701,6 +757,7 @@ const Properties = () => {
                             alt={`photo-${idx}`} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                             onError={() => setBrokenImages(prev => ({ ...prev, [url]: true }))}
+                            referrerPolicy="no-referrer"
                           />
                         )}
                         <button 

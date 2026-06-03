@@ -90,6 +90,21 @@
   text-decoration: line-through;
 }
 
+/* Blocked (already booked) dates — red with strikethrough */
+.calendar-day.blocked-date {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.calendar-day.blocked-date .day-number {
+  background-color: #FEE2E2;
+  color: #EF4444;
+  text-decoration: line-through;
+  text-decoration-color: #EF4444;
+  font-weight: 600;
+  border: 1px solid #FECACA;
+}
+
 .day-number {
   display: flex;
   align-items: center;

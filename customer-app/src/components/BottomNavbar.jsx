@@ -56,14 +56,14 @@ const BottomNavbar = () => {
           {isFavouritesActive && <span className="nav-dock-label">Favourites</span>}
         </Link>
 
-        {/* PG Rooms */}
-        <Link 
+        {/* PG Rooms — temporarily hidden, preserved for future use */}
+        {/* <Link 
           to="/rentals" 
           className={`nav-dock-item ${isPgRoomsActive ? 'active' : ''}`}
         >
           <Bed size={22} />
           {isPgRoomsActive && <span className="nav-dock-label">PG Rooms</span>}
-        </Link>
+        </Link> */}
 
         {/* Rides */}
         <Link 

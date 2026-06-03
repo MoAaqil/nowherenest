@@ -2,9 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import './DateRangeCalendar.css';
 
-const DateRangeCalendar = ({ startDate, endDate, onChange }) => {
+const DateRangeCalendar = ({ startDate, endDate, onChange, blockedDates = [] }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // Pre-compute blocked date strings for fast lookup
+  const blockedDateStrings = new Set(
+    blockedDates.map(d => new Date(d).toDateString())
+  );
 
   // Initialize visible month/year
   const initialDate = startDate ? new Date(startDate) : today;
@@ -96,10 +101,12 @@ const DateRangeCalendar = ({ startDate, endDate, onChange }) => {
     for (let i = 1; i <= totalDays; i++) {
       const date = new Date(currentYear, currentMonth, i);
       const isPast = date < today;
+      const isBlocked = blockedDateStrings.has(date.toDateString());
       days.push({
         date,
         isCurrentMonth: true,
-        isDisabled: isPast,
+        isDisabled: isPast || isBlocked,
+        isBlocked,
         isToday: date.toDateString() === today.toDateString(),
         key: `curr-${i}`
       });
@@ -124,6 +131,7 @@ const DateRangeCalendar = ({ startDate, endDate, onChange }) => {
 
   // Helper to determine cell classes
   const getDayClasses = (day) => {
+    if (day.isDisabled && day.isBlocked) return 'calendar-day disabled blocked-date';
     if (day.isDisabled) return 'calendar-day disabled';
 
     const dateStr = formatDateString(day.date);
@@ -185,11 +193,19 @@ const DateRangeCalendar = ({ startDate, endDate, onChange }) => {
             className={getDayClasses(day)}
             onClick={() => handleDayClick(day.date)}
             disabled={day.isDisabled}
+            title={day.isBlocked ? 'This date is already booked' : undefined}
           >
             <span className="day-number">{day.date.getDate()}</span>
           </button>
         ))}
       </div>
+
+      {blockedDates.length > 0 && (
+        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>
+          <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#FEE2E2', border: '1px solid #EF4444', display: 'inline-block' }}></span>
+          Already booked dates are highlighted in red
+        </div>
+      )}
     </div>
   );
 };

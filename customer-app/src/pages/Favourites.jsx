@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Star, MapPin, Play, Trash2, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Heart, Star, MapPin, Play, Trash2, ArrowLeft, ShieldAlert, Wifi, BedDouble, Flame, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { formatPrice } from '../utils/currency';
 import './Favourites.css';
 
 const Favourites = () => {
@@ -15,35 +16,37 @@ const Favourites = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch all stays & vibes on mount
+  // Fetch liked stays from backend API (cross-device sync)
   useEffect(() => {
     const fetchFavourites = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Load liked stays IDs from localStorage
-        const localLikedStays = JSON.parse(localStorage.getItem('liked_stays') || '[]');
+        // Load liked stays from backend API (synced across devices)
+        const favRes = await api.auth.getFavourites();
+        setLikedStays(favRes.favourites || []);
+        // Also sync localStorage to reflect backend state
+        const ids = (favRes.favourites || []).map(p => p._id);
+        localStorage.setItem('liked_stays', JSON.stringify(ids));
 
-        // Fetch all stays
-        const staysRes = await api.listings.getAll({ type: 'stay' });
-        const allStays = staysRes.listings || [];
-        
-        // Filter stays matching local storage IDs
-        const filteredStays = allStays.filter(stay => localLikedStays.includes(stay._id));
-        setLikedStays(filteredStays);
-
-        // Fetch all vibes
+        // Fetch vibes liked by user
         const vibesRes = await api.vibes.getAll();
-        const allVibes = vibesRes || [];
-
-        // Filter vibes liked by user
-        const filteredVibes = allVibes.filter(vibe => 
+        const allVibes = vibesRes.vibes || [];
+        const filteredVibes = allVibes.filter(vibe =>
           vibe.likes && Array.isArray(vibe.likes) && vibe.likes.includes(currentUserId)
         );
         setLikedVibes(filteredVibes);
       } catch (err) {
         console.error('Failed to load favourites:', err);
-        setError('Unable to load your favourites. Please try again.');
+        // Fallback to localStorage if API fails
+        try {
+          const localLikedStays = JSON.parse(localStorage.getItem('liked_stays') || '[]');
+          const staysRes = await api.listings.getAll({ type: 'stay' });
+          const allStays = staysRes.listings || [];
+          setLikedStays(allStays.filter(stay => localLikedStays.includes(stay._id)));
+        } catch {
+          setError('Unable to load your favourites. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
@@ -54,21 +57,22 @@ const Favourites = () => {
     }
   }, [currentUserId]);
 
-  // Remove stay from favourites
-  const handleRemoveStay = (stayId, e) => {
+  // Remove stay from favourites — syncs to backend API + localStorage
+  const handleRemoveStay = async (stayId, e) => {
     e.preventDefault();
     e.stopPropagation();
     try {
-      const localLikedStays = JSON.parse(localStorage.getItem('liked_stays') || '[]');
-      const updated = localLikedStays.filter(id => id !== stayId);
-      localStorage.setItem('liked_stays', JSON.stringify(updated));
       setLikedStays(prev => prev.filter(stay => stay._id !== stayId));
+      const local = JSON.parse(localStorage.getItem('liked_stays') || '[]');
+      localStorage.setItem('liked_stays', JSON.stringify(local.filter(id => id !== stayId)));
+      await api.auth.toggleFavourite(stayId);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to remove favourite:', err);
+      const favRes = await api.auth.getFavourites();
+      setLikedStays(favRes.favourites || []);
     }
   };
 
-  // Toggle vibe like
   const handleUnlikeVibe = async (vibeId, e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -78,6 +82,30 @@ const Favourites = () => {
     } catch (err) {
       console.error('Failed to unlike vibe:', err);
     }
+  };
+
+  // Get best photo from property — handles both 'photos' and 'images' fields
+  const getPhoto = (stay) => {
+    if (stay.photos && stay.photos.length > 0) return stay.photos[0];
+    if (stay.images && stay.images.length > 0) return stay.images[0];
+    return 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80';
+  };
+
+  // Get display name — handles both 'name' and 'title' fields
+  const getName = (stay) => stay.name || stay.title || 'Unnamed Stay';
+
+  const getAmenityIcon = (amenity) => {
+    const a = amenity.toLowerCase();
+    if (a.includes('wifi') || a.includes('wi-fi')) return '📶';
+    if (a.includes('pool')) return '🏊';
+    if (a.includes('ac') || a.includes('air')) return '❄️';
+    if (a.includes('hot')) return '🚿';
+    if (a.includes('park')) return '🅿️';
+    if (a.includes('food') || a.includes('breakfast')) return '🍽️';
+    if (a.includes('pet')) return '🐾';
+    if (a.includes('gym')) return '🏋️';
+    if (a.includes('spa')) return '💆';
+    return '✓';
   };
 
   return (
@@ -93,14 +121,14 @@ const Favourites = () => {
 
       {/* Tabs Switcher */}
       <div className="favourites-tabs flex-center">
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'stays' ? 'active' : ''}`}
           onClick={() => setActiveTab('stays')}
         >
           <Heart size={18} fill={activeTab === 'stays' ? '#EF4444' : 'none'} color={activeTab === 'stays' ? '#EF4444' : 'currentColor'} />
           <span>Saved Stays ({likedStays.length})</span>
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'vibes' ? 'active' : ''}`}
           onClick={() => setActiveTab('vibes')}
         >
@@ -109,7 +137,7 @@ const Favourites = () => {
         </button>
       </div>
 
-      {/* Content Side */}
+      {/* Content */}
       {loading ? (
         <div className="loading-spinner-wrapper flex-center">
           <div className="spinner"></div>
@@ -129,56 +157,78 @@ const Favourites = () => {
             <Link to="/" className="btn btn-primary" style={{ marginTop: '16px' }}>Explore Stays</Link>
           </div>
         ) : (
-          <div className="favourites-grid grid">
+          <div className="fav-stays-grid">
             {likedStays.map(stay => (
-              <div key={stay._id} className="stay-horizontal-card card" style={{ position: 'relative' }}>
-                {/* Remove button overlay */}
-                <button 
-                  className="remove-fav-btn flex-center"
-                  onClick={(e) => handleRemoveStay(stay._id, e)}
-                  title="Remove from Favourites"
-                >
-                  <Trash2 size={16} />
-                </button>
-
-                <div className="card-image-panel">
+              <Link to={`/listing/${stay._id}`} key={stay._id} className="fav-stay-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                {/* Image Section */}
+                <div className="fav-card-image">
                   <img
-                    src={stay.images && stay.images[0] || 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80'}
-                    alt={stay.title}
+                    src={getPhoto(stay)}
+                    alt={getName(stay)}
+                    referrerPolicy="no-referrer"
+                    onError={e => { e.target.src = 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80'; }}
                   />
-                  <div className="price-tag-pill">₹{stay.price}<span>/night</span></div>
+                  {/* Remove button */}
+                  <button
+                    className="fav-remove-btn"
+                    onClick={(e) => handleRemoveStay(stay._id, e)}
+                    title="Remove from Favourites"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                  {/* Price pill */}
+                  <div className="fav-price-pill">
+                    {formatPrice(stay.price || stay.pricePerNight || 0)}
+                    <span>/night</span>
+                  </div>
+                  {/* Rating badge */}
+                  {stay.starRating > 0 && (
+                    <div className="fav-rating-badge">
+                      <Star size={11} fill="#F59E0B" stroke="#F59E0B" />
+                      <span>{(stay.starRating || stay.rating || 4.0).toFixed(1)}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="card-info-panel">
-                  <div className="flex-between card-top-row">
-                    <span className="stay-category">{stay.category}</span>
-                    <div className="rating-tag">
-                      <Star size={14} className="star-icon" />
-                      <span>{stay.starRating || 4.5}</span>
-                    </div>
+                {/* Info Section */}
+                <div className="fav-card-info">
+                  {/* Category */}
+                  <div className="fav-card-meta-row">
+                    <span className="fav-category-chip">
+                      {stay.category === 'hotel' ? '🏨' : stay.category === 'apartment' ? '🏢' : '🏡'}
+                      {' '}{stay.category || 'Stay'}
+                    </span>
+                    {stay.isLicensed && (
+                      <span className="fav-verified-badge">✓ Approved</span>
+                    )}
                   </div>
 
-                  <h5 style={{ display: 'flex', alignItems: 'center', gap: '4.5px', marginTop: '6px' }}>
-                    {stay.title}
-                  </h5>
-                  
-                  <p className="card-location">
-                    <MapPin size={14} />
-                    <span>{stay.location?.address}</span>
+                  {/* Name */}
+                  <h3 className="fav-stay-name">{getName(stay)}</h3>
+
+                  {/* Location */}
+                  <p className="fav-stay-location">
+                    <MapPin size={13} />
+                    <span>{stay.location?.address || stay.location?.city || stay.location?.district || 'Location not specified'}</span>
                   </p>
 
-                  <div className="card-amenities-row flex">
-                    {(stay.amenities || []).slice(0, 3).map(a => (
-                      <span key={a} className="amenity-pill">{a.replace('_', ' ')}</span>
-                    ))}
-                  </div>
+                  {/* Amenities row */}
+                  {stay.amenities && stay.amenities.length > 0 && (
+                    <div className="fav-amenities-row">
+                      {stay.amenities.slice(0, 4).map((a, i) => (
+                        <span key={i} className="fav-amenity-tag">
+                          {getAmenityIcon(a)} {a.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-                  <div className="card-action-row flex-between" style={{ marginTop: '12px' }}>
-                    <span className="owner-name-tag" style={{ color: '#16A34A', fontWeight: '700' }}>✓ Approved Stay</span>
-                    <Link to={`/listing/${stay._id}`} className="btn btn-secondary btn-small">Book Now</Link>
+                  {/* Footer row */}
+                  <div className="fav-card-footer">
+                    <span className="fav-book-btn">View & Book →</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )
@@ -194,8 +244,7 @@ const Favourites = () => {
           <div className="favourites-grid grid">
             {likedVibes.map(vibe => (
               <div key={vibe._id} className="vibe-fav-card card">
-                {/* Remove button */}
-                <button 
+                <button
                   className="remove-fav-btn flex-center"
                   onClick={(e) => handleUnlikeVibe(vibe._id, e)}
                   title="Unlike Vibe"

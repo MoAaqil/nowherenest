@@ -51,6 +51,14 @@ export const api = {
     getMe: () => fetchWithAuth('/auth/me'),
     updateBank: (bankData) => fetchWithAuth('/auth/bank', { method: 'PUT', body: bankData }),
     updateProfile: (profileData) => fetchWithAuth('/auth/profile', { method: 'PUT', body: profileData }),
+    toggleFavourite: (propertyId) => fetchWithAuth(`/auth/favourites/${propertyId}`, { method: 'POST' }),
+    getFavourites: () => fetchWithAuth('/auth/favourites'),
+  },
+
+  // Messages API
+  messages: {
+    getByBooking: (bookingId) => fetchWithAuth(`/messages/${bookingId}`),
+    send: (bookingId, text) => fetchWithAuth(`/messages/${bookingId}`, { method: 'POST', body: { text } }),
   },
 
   // Listings API
@@ -60,8 +68,12 @@ export const api = {
       const query = new URLSearchParams();
       if (params.type) query.append('type', params.type);
       if (params.category) query.append('category', params.category);
+      if (params.landscapeCategory) query.append('landscapeCategory', params.landscapeCategory);
       if (params.search) query.append('search', params.search);
       if (params.amenities) query.append('amenities', params.amenities);
+      if (params.lat) query.append('lat', params.lat);
+      if (params.lng) query.append('lng', params.lng);
+      if (params.radius) query.append('radius', params.radius);
       return fetchWithAuth(`/listings?${query.toString()}`);
     },
     getById: (id) => fetchWithAuth(`/listings/${id}`),
@@ -77,6 +89,9 @@ export const api = {
     getOwnerBookings: () => fetchWithAuth('/bookings/owner'),
     getById: (id) => fetchWithAuth(`/bookings/${id}`),
     submitReview: (id, reviewData) => fetchWithAuth(`/bookings/${id}/review`, { method: 'POST', body: reviewData }),
+    checkOut: (id) => fetchWithAuth(`/bookings/${id}/checkout`, { method: 'POST' }),
+    extendBooking: (id, data) => fetchWithAuth(`/bookings/${id}/extend`, { method: 'POST', body: data }),
+    cancel: (id) => fetchWithAuth(`/bookings/${id}/cancel`, { method: 'POST' }),
   },
 
   // Payouts API
@@ -116,11 +131,13 @@ export const api = {
   // Rooms API
   rooms: {
     getByProperty: (propertyId) => fetchWithAuth(`/rooms/property/${propertyId}`),
+    getAvailability: (roomId) => fetchWithAuth(`/rooms/${roomId}/availability`),
   },
 
   // Coupons API
   coupons: {
     validate: (propertyId, code) => fetchWithAuth('/coupons/validate', { method: 'POST', body: { propertyId, code } }),
+    getPropertyCouponsPublic: (propertyId) => fetchWithAuth(`/coupons/property/${propertyId}/public`),
   },
 
   // Vibes API
@@ -128,5 +145,10 @@ export const api = {
     getAll: () => fetchWithAuth('/vibes'),
     create: (vibeData) => fetchWithAuth('/vibes', { method: 'POST', body: vibeData }),
     toggleLike: (id) => fetchWithAuth(`/vibes/${id}/like`, { method: 'POST' })
+  },
+
+  // Payments API
+  payments: {
+    verify: (paymentData) => fetchWithAuth('/payments/verify', { method: 'POST', body: paymentData })
   }
 };

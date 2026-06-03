@@ -6,11 +6,13 @@ const {
   getRoomById, 
   updateRoom, 
   deleteRoom,
-  bulkAddRooms
+  bulkAddRooms,
+  getRoomAvailability
 } = require('../controllers/roomController');
 const { protect } = require('../middleware/auth');
 
 router.get('/property/:propertyId', getRoomsByProperty);
+router.get('/:id/availability', getRoomAvailability);
 router.get('/:id', getRoomById);
 
 router.post('/', protect, createRoom);

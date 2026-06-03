@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -10,6 +10,8 @@ import {
   MapPin, 
   X,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   LogOut,
   Save,
   Lock,
@@ -20,11 +22,16 @@ import {
   XCircle,
   Calendar,
   Bed,
-  History
+  History,
+  Coins,
+  Send,
+  AlertTriangle
 } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { translate } from '../utils/translations';
+import { pushNotification } from '../components/Navbar';
 import './Profile.css';
+
 
 const Profile = () => {
   const { user, logout, setUser } = useAuth();
@@ -57,16 +64,21 @@ const Profile = () => {
   const [distanceUnit, setDistanceUnit] = useState(localStorage.getItem('distance_unit') || 'km');
   const [notifications, setNotifications] = useState(localStorage.getItem('notifications_enabled') !== 'false');
   const [currency, setCurrency] = useState(localStorage.getItem('currency') || 'INR');
-  const [activePlan, setActivePlan] = useState(localStorage.getItem('user_plan') || 'Silver');
+  const [activePlan, setActivePlan] = useState(localStorage.getItem('user_plan') || 'Classic');
   const [toastMessage, setToastMessage] = useState('');
+  const [plansExpanded, setPlansExpanded] = useState(false);
 
-  // NWN Cash Balance
-  const [nwnCash, setNwnCash] = useState(parseFloat(localStorage.getItem('nwn_cash')) || 1250.00);
+  // NWN Cash Balance — now sourced from real user.owlsPoints
   const [totalSpendings, setTotalSpendings] = useState(0);
 
   // Booking history
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+
+  // Cancel booking state
+  const [cancellingBookingId, setCancellingBookingId] = useState(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState(null);
+  const [cancelError, setCancelError] = useState('');
 
   // Review modal state
   const [reviewModalBooking, setReviewModalBooking] = useState(null);
@@ -77,13 +89,13 @@ const Profile = () => {
   const [reviewSuccess, setReviewSuccess] = useState('');
   const [reviewError, setReviewError] = useState('');
 
-  // Property chats
-  const [chats, setChats] = useState([
-    { id: 1, host: 'Albert (Bail Exotica)', text: 'Hello! Your Deluxe room is ready for check-in.', time: '10:30 AM', unread: true },
-    { id: 2, host: 'Taj Kumarakom Spa', text: 'We have applied the WELCOME10 coupon to your booking.', time: 'Yesterday', unread: false }
-  ]);
+  // Real messaging state (replaces hardcoded dummy chats)
+  const [activeMessagingBooking, setActiveMessagingBooking] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [chatInput, setChatInput] = useState('');
-  const [activeChat, setActiveChat] = useState(null);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     const fetchSpendings = async () => {
@@ -93,10 +105,11 @@ const Profile = () => {
         const total = bookingsList.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
         setTotalSpendings(total);
         
-        let computedPlan = 'Silver';
-        if (total >= 50000) computedPlan = 'Diamond';
-        else if (total >= 25000) computedPlan = 'Platinum';
-        else if (total >= 10000) computedPlan = 'Gold';
+        const computedOwls = Math.floor(total / 1000) * 25;
+        let computedPlan = 'Classic';
+        if (computedOwls >= 1250) computedPlan = 'Royal';
+        else if (computedOwls >= 625) computedPlan = 'Prestige';
+        else if (computedOwls >= 250) computedPlan = 'Grand';
         
         setActivePlan(computedPlan);
         localStorage.setItem('user_plan', computedPlan);
@@ -107,10 +120,40 @@ const Profile = () => {
 
     if (user) {
       setProfileName(user.name);
-      setProfilePhone(user.phone);
+      setProfilePhone(user.phone || '');
       fetchSpendings();
     }
   }, [user]);
+
+  // Fetch real messages for a booking
+  const fetchMessages = async (bookingId) => {
+    setMessagesLoading(true);
+    try {
+      const res = await api.messages.getByBooking(bookingId);
+      setMessages(res.messages || []);
+      // Scroll to bottom
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } catch (err) {
+      console.error('Failed to fetch messages:', err);
+      setMessages([]);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const handleOpenMessaging = (booking) => {
+    setActiveMessagingBooking(booking);
+    setChatInput('');
+    fetchMessages(booking._id);
+  };
+
+  const handleCloseMessaging = () => {
+    setActiveMessagingBooking(null);
+    setMessages([]);
+    setChatInput('');
+  };
 
   const fetchBookingHistory = async () => {
     setBookingsLoading(true);
@@ -173,23 +216,48 @@ const Profile = () => {
     showToast(translate('setting_saved', language));
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!chatInput) return;
-    const activeIndex = chats.findIndex(c => c.id === activeChat.id);
-    if (activeIndex !== -1) {
-      const updated = [...chats];
-      updated[activeIndex].text = chatInput;
-      updated[activeIndex].time = 'Just Now';
-      updated[activeIndex].unread = false;
-      setChats(updated);
+    if (!chatInput.trim() || !activeMessagingBooking) return;
+    setSendingMessage(true);
+    try {
+      const res = await api.messages.send(activeMessagingBooking._id, chatInput.trim());
+      setMessages(prev => [...prev, res.message]);
       setChatInput('');
       setTimeout(() => {
-        const replies = [...updated];
-        replies[activeIndex].text = 'Sure! We received your message and will arrange everything accordingly.';
-        replies[activeIndex].time = 'Just Now';
-        setChats(replies);
-      }, 1500);
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      showToast('Failed to send message. Please try again.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  // Cancel booking handler
+  const handleCancelBooking = async (bookingId) => {
+    setCancellingBookingId(bookingId);
+    setCancelError('');
+    try {
+      await api.bookings.cancel(bookingId);
+      // Update local bookings list
+      setBookings(prev => prev.map(b =>
+        b._id === bookingId
+          ? { ...b, status: 'cancelled', paymentStatus: 'refunded' }
+          : b
+      ));
+      setCancelConfirmId(null);
+      showToast('Booking cancelled. Refund has been initiated.');
+      pushNotification({
+        type: 'cancel',
+        title: 'Booking Cancelled',
+        body: 'Your booking has been cancelled and a refund has been initiated.'
+      });
+    } catch (err) {
+      setCancelError(err.message || 'Failed to cancel booking');
+    } finally {
+      setCancellingBookingId(null);
     }
   };
 
@@ -266,12 +334,13 @@ const Profile = () => {
   };
 
   const planDetailsMeta = {
-    Silver: { perkKey: 'unlocked_silver', req: 0, nextReq: 10000, nextTier: 'Gold', badgeColor: '#94A3B8' },
-    Gold: { perkKey: 'unlocked_gold', req: 10000, nextReq: 25000, nextTier: 'Platinum', badgeColor: '#D97706' },
-    Platinum: { perkKey: 'unlocked_platinum', req: 25000, nextReq: 50000, nextTier: 'Diamond', badgeColor: '#0EA5E9' },
-    Diamond: { perkKey: 'unlocked_diamond', req: 50000, nextReq: null, nextTier: null, badgeColor: '#A855F7' },
+    Classic: { perkKey: 'unlocked_classic', req: 0, nextReq: 250, nextTier: 'Grand', badgeColor: '#94A3B8' },
+    Grand: { perkKey: 'unlocked_grand', req: 250, nextReq: 625, nextTier: 'Prestige', badgeColor: '#D97706' },
+    Prestige: { perkKey: 'unlocked_prestige', req: 625, nextReq: 1250, nextTier: 'Royal', badgeColor: '#0EA5E9' },
+    Royal: { perkKey: 'unlocked_royal', req: 1250, nextReq: null, nextTier: null, badgeColor: '#A855F7' },
   };
-  const currentPlanMeta = planDetailsMeta[activePlan] || planDetailsMeta.Silver;
+  const currentPlanMeta = planDetailsMeta[activePlan] || planDetailsMeta.Classic;
+  const owlsPoints = user?.owlsPoints ?? Math.floor(totalSpendings / 1000) * 25;
 
   return (
     <div className="profile-page-wrapper">
@@ -282,7 +351,7 @@ const Profile = () => {
         <div className="hero-profile-container flex-between">
           <div className="user-details flex">
             <div className="user-avatar-circle flex-center">
-              {profileName.charAt(0).toUpperCase() || 'A'}
+              {(profileName || user?.name || 'A').charAt(0).toUpperCase()}
             </div>
             <div>
               <h2>{translate('welcome', language)}, {profileName || 'User'}</h2>
@@ -297,34 +366,6 @@ const Profile = () => {
 
       <div className="container profile-content-container">
         
-        {/* NWN Cash Card */}
-        <div className="nwn-cash-card flex-between">
-          <div className="cash-left flex">
-            <div className="cash-icon-circle flex-center"><span>💵</span></div>
-            <div className="cash-data">
-              <span className="cash-lbl">{translate('nwn_cash_balance', language)}</span>
-              <h3>{formatPrice(nwnCash)}</h3>
-            </div>
-          </div>
-          <div className="currency-selector-badge flex-center">
-            <Globe size={14} style={{ marginRight: '6px' }} />
-            <select 
-              value={currency} 
-              onChange={e => {
-                localStorage.setItem('currency', e.target.value);
-                setCurrency(e.target.value);
-                showToast(`${translate('switched_to', language)} ${e.target.value}`);
-                window.dispatchEvent(new Event('storage'));
-              }}
-              className="currency-select-inline"
-            >
-              <option value="INR">INR (₹)</option>
-              <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-            </select>
-          </div>
-        </div>
-
         {/* Tab Navigation */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', background: '#F1F5F9', padding: '4px', borderRadius: '12px' }}>
           <button
@@ -356,56 +397,120 @@ const Profile = () => {
         {/* ===== TAB 1: SETTINGS ===== */}
         {activeTab === 'settings' && (
           <>
-            {/* Membership Plan Card */}
-            <div className="profile-card plan-details-card">
-              <h4 className="card-title">{translate('membership_plan_details', language)}</h4>
-              
-              <div className="plan-tiers-grid">
-                {['Silver', 'Gold', 'Platinum', 'Diamond'].map(tier => (
-                  <div
-                    key={tier}
-                    className={`plan-tier-btn ${activePlan === tier ? 'active' : ''}`}
-                    style={{ '--accent-color': planDetailsMeta[tier].badgeColor, cursor: 'default' }}
-                  >
-                    {translate(tier.toLowerCase() + '_member', language).split(' ')[0]}
-                  </div>
-                ))}
-              </div>
-
-              <div className="active-plan-info">
-                <div className="spendings-header flex-between" style={{ marginBottom: '12px', borderBottom: '1px solid rgba(10,59,42,0.06)', paddingBottom: '10px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#0A3B2A' }}>
-                    {translate('total_spendings', language)}:
-                  </span>
-                  <strong style={{ fontSize: '15px', color: '#0A3B2A' }}>
-                    {formatPrice(totalSpendings)}
-                  </strong>
-                </div>
-
-                <div className="plan-header flex" style={{ marginBottom: '8px' }}>
-                  <span className="plan-badge-dot" style={{ backgroundColor: currentPlanMeta.badgeColor }}></span>
-                  <h5 style={{ fontSize: '13.5px', fontWeight: '800', color: '#0A3B2A' }}>
-                    {translate('active_plan_info', language)}
-                  </h5>
-                </div>
-                <p className="plan-desc" style={{ marginBottom: '12px' }}>
-                  {translate(currentPlanMeta.perkKey, language)}
-                </p>
-
-                {currentPlanMeta.nextReq !== null && (
-                  <div className="tier-progress-tracker" style={{ background: 'white', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(10,59,42,0.06)' }}>
-                    <p style={{ fontSize: '11px', color: '#64748B', margin: 0, fontWeight: '600' }}>
-                      {translate('spend_more', language).replace('{amount}', formatPrice(currentPlanMeta.nextReq - totalSpendings))}
+            {/* Membership Plan Collapsible Toggle Button */}
+            <div className="profile-card plan-details-card" style={{ padding: '16px', marginBottom: '20px' }}>
+              <button 
+                onClick={() => setPlansExpanded(!plansExpanded)}
+                className="nwn-plans-toggle-btn"
+                style={{
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '26px' }}>🦉</span>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '850', color: '#0A3B2A' }}>
+                      Membership: <span style={{ color: currentPlanMeta.badgeColor }}>{activePlan}</span>
+                    </h4>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '12.5px', color: '#16A34A', fontWeight: '750' }}>
+                      {owlsPoints.toLocaleString()} Owls Points
                     </p>
-                    <div className="progress-bar-bg" style={{ height: '6px', background: '#F1F5F9', borderRadius: '10px', marginTop: '8px', overflow: 'hidden' }}>
-                      <div 
-                        className="progress-bar-fill" 
-                        style={{ height: '100%', background: '#0A3B2A', width: `${Math.min(100, (totalSpendings / currentPlanMeta.nextReq) * 100)}%` }}
-                      ></div>
-                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-medium)', fontSize: '13px', fontWeight: '700' }}>
+                  <span>{plansExpanded ? 'Hide' : 'View'}</span>
+                  {plansExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+              </button>
+
+              {plansExpanded && (
+                <div className="nwn-plans-expanded-content" style={{ marginTop: '16px', borderTop: '1px solid rgba(10,59,42,0.06)', paddingTop: '16px' }}>
+                  
+                  {/* Current Active Plan Perks & Offers */}
+                  <div className="active-plan-info" style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid rgba(10,59,42,0.04)', marginBottom: '16px' }}>
+                    <div className="plan-header flex" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="plan-badge-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: currentPlanMeta.badgeColor }}></span>
+                      <h5 style={{ fontSize: '13px', fontWeight: '800', color: '#0A3B2A', margin: 0 }}>
+                        Current Active Plan: {activePlan} Member
+                      </h5>
+                    </div>
+                    <p className="plan-desc" style={{ fontSize: '12.5px', color: '#475569', margin: '4px 0 12px 0', lineHeight: '1.4', fontWeight: '600' }}>
+                      🎁 {translate(currentPlanMeta.perkKey, language)}
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed rgba(10,59,42,0.1)', paddingTop: '10px', marginTop: '10px' }}>
+                      <div className="flex-between" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '12.5px', fontWeight: '750', color: '#64748B' }}>
+                          Total Spendings:
+                        </span>
+                        <strong style={{ fontSize: '13px', color: '#0A3B2A', fontWeight: '800' }}>
+                          {formatPrice(totalSpendings)}
+                        </strong>
+                      </div>
+                      <div className="flex-between" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '12.5px', fontWeight: '750', color: '#64748B' }}>
+                          Total Owls Points:
+                        </span>
+                        <strong style={{ fontSize: '13px', color: '#16A34A', fontWeight: '800' }}>
+                          {owlsPoints.toLocaleString()} Owls
+                        </strong>
+                      </div>
+                    </div>
+
+                    {currentPlanMeta.nextReq !== null && (
+                      <div className="tier-progress-tracker" style={{ marginTop: '12px' }}>
+                        <p style={{ fontSize: '11.5px', color: '#64748B', margin: 0, fontWeight: '700' }}>
+                          Earn {currentPlanMeta.nextReq - owlsPoints} more Owls to unlock {currentPlanMeta.nextTier} Tier
+                        </p>
+                        <div className="progress-bar-bg" style={{ height: '6px', background: '#E2E8F0', borderRadius: '10px', marginTop: '8px', overflow: 'hidden' }}>
+                          <div 
+                            className="progress-bar-fill" 
+                            style={{ 
+                              height: '100%', 
+                              background: '#166534', 
+                              width: `${Math.min(100, ((owlsPoints - currentPlanMeta.req) / (currentPlanMeta.nextReq - currentPlanMeta.req)) * 100)}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Other Available Plans inside the button/expandable */}
+                  <h5 style={{ fontSize: '12.5px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                    All Membership Tiers
+                  </h5>
+                  <div className="plan-tiers-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                    {['Classic', 'Grand', 'Prestige', 'Royal'].map(tier => (
+                      <div
+                        key={tier}
+                        className={`plan-tier-btn ${activePlan === tier ? 'active' : ''}`}
+                        style={{
+                          background: activePlan === tier ? planDetailsMeta[tier].badgeColor : '#F1F5F9',
+                          color: activePlan === tier ? 'white' : '#64748B',
+                          padding: '10px 4px',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: '800',
+                          textAlign: 'center',
+                          border: 'none',
+                          boxShadow: activePlan === tier ? `0 4px 10px ${planDetailsMeta[tier].badgeColor}33` : 'none'
+                        }}
+                      >
+                        {tier}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Settings Section */}
@@ -421,12 +526,32 @@ const Profile = () => {
                   <ChevronRight size={18} className="chevron" />
                 </div>
 
-                <div className="option-item flex-between" onClick={() => setActiveModal('messages')}>
+                <div className="option-item flex-between">
+                  <div className="option-left flex">
+                    <Coins size={20} className="option-icon" />
+                    <span>Currency</span>
+                  </div>
+                  <select 
+                    value={currency} 
+                    onChange={e => {
+                      localStorage.setItem('currency', e.target.value);
+                      setCurrency(e.target.value);
+                      showToast(`${translate('switched_to', language)} ${e.target.value}`);
+                      window.dispatchEvent(new Event('storage'));
+                    }}
+                    className="profile-select-mini"
+                  >
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
+
+                <div className="option-item flex-between" onClick={() => setActiveTab('bookings')}>
                   <div className="option-left flex">
                     <MessageSquare size={20} className="option-icon" />
                     <span>{translate('property_messages', language)}</span>
                   </div>
-                  {chats.some(c => c.unread) && <span className="badge badge-success font-weight-bold" style={{ background: '#0A3B2A', color: 'white' }}>New</span>}
                   <ChevronRight size={18} className="chevron" />
                 </div>
 
@@ -583,48 +708,201 @@ const Profile = () => {
                         </div>
                       )}
 
-                      {/* Review section */}
-                      {hasReview ? (
-                        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px', padding: '10px 14px' }}>
-                          <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
-                            {[1,2,3,4,5].map(s => (
-                              <Star key={s} size={14} fill={s <= booking.review.rating ? '#F59E0B' : 'none'} stroke={s <= booking.review.rating ? '#F59E0B' : '#CBD5E1'} />
-                            ))}
-                            <span style={{ fontSize: '11px', color: '#64748B', marginLeft: '6px' }}>Your Review</span>
-                          </div>
-                          {booking.review.comment && (
-                            <p style={{ margin: 0, fontSize: '12px', color: '#475569', fontStyle: 'italic' }}>
-                              "{booking.review.comment}"
-                            </p>
-                          )}
-                        </div>
-                      ) : canReview ? (
+                      {/* Action buttons row: Review, Cancel, Message */}
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+
+                        {/* Review button */}
+                        {canReview && (
+                          <button
+                            onClick={() => {
+                              setReviewModalBooking(booking);
+                              setReviewRating(0);
+                              setReviewComment('');
+                              setReviewError('');
+                              setReviewSuccess('');
+                            }}
+                            style={{
+                              flex: 1, minWidth: '120px', padding: '8px 12px', border: '1.5px dashed #F59E0B',
+                              borderRadius: '10px', background: '#FFFBEB', color: '#D97706',
+                              fontWeight: '700', fontSize: '12px', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                            }}
+                          >
+                            <Star size={13} /> Rate Stay
+                          </button>
+                        )}
+
+                        {/* Message Host button */}
                         <button
-                          onClick={() => {
-                            setReviewModalBooking(booking);
-                            setReviewRating(0);
-                            setReviewComment('');
-                            setReviewError('');
-                            setReviewSuccess('');
-                          }}
+                          onClick={() => handleOpenMessaging(booking)}
                           style={{
-                            width: '100%', padding: '10px', border: '1.5px dashed #F59E0B',
-                            borderRadius: '10px', background: '#FFFBEB', color: '#D97706',
-                            fontWeight: '700', fontSize: '13px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                            transition: 'all 0.2s'
+                            flex: 1, minWidth: '120px', padding: '8px 12px', border: '1.5px solid #E2E8F0',
+                            borderRadius: '10px', background: '#F8FAFC', color: '#0A3B2A',
+                            fontWeight: '700', fontSize: '12px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#FEF3C7'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = '#FFFBEB'; }}
                         >
-                          <Star size={14} /> Rate Your Stay Experience
+                          <MessageSquare size={13} /> Message Host
                         </button>
-                      ) : null}
+
+                        {/* Cancel button — only for confirmed bookings */}
+                        {booking.status === 'confirmed' && (
+                          cancelConfirmId === booking._id ? (
+                            <div style={{ width: '100%', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px', marginTop: '4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                                <AlertTriangle size={14} color="#EF4444" />
+                                <span style={{ fontSize: '12px', fontWeight: '700', color: '#EF4444' }}>Are you sure you want to cancel?</span>
+                              </div>
+                              <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 10px' }}>
+                                Your booking will be cancelled and a refund will be initiated. This cannot be undone.
+                              </p>
+                              {cancelError && <p style={{ fontSize: '11px', color: '#EF4444', marginBottom: '8px' }}>{cancelError}</p>}
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  onClick={() => handleCancelBooking(booking._id)}
+                                  disabled={cancellingBookingId === booking._id}
+                                  style={{
+                                    flex: 1, padding: '8px', background: '#EF4444', color: 'white',
+                                    border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer'
+                                  }}
+                                >
+                                  {cancellingBookingId === booking._id ? 'Cancelling...' : 'Yes, Cancel'}
+                                </button>
+                                <button
+                                  onClick={() => { setCancelConfirmId(null); setCancelError(''); }}
+                                  style={{
+                                    flex: 1, padding: '8px', background: 'white', color: '#475569',
+                                    border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer'
+                                  }}
+                                >
+                                  Keep Booking
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setCancelConfirmId(booking._id)}
+                              style={{
+                                flex: 1, minWidth: '120px', padding: '8px 12px', border: '1.5px solid #FECACA',
+                                borderRadius: '10px', background: '#FEF2F2', color: '#EF4444',
+                                fontWeight: '700', fontSize: '12px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                              }}
+                            >
+                              <XCircle size={13} /> Cancel Booking
+                            </button>
+                          )
+                        )}
+
+                        {/* Already reviewed */}
+                        {hasReview && (
+                          <div style={{ width: '100%', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px', padding: '10px 14px' }}>
+                            <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
+                              {[1,2,3,4,5].map(s => (
+                                <Star key={s} size={14} fill={s <= booking.review.rating ? '#F59E0B' : 'none'} stroke={s <= booking.review.rating ? '#F59E0B' : '#CBD5E1'} />
+                              ))}
+                              <span style={{ fontSize: '11px', color: '#64748B', marginLeft: '6px' }}>Your Review</span>
+                            </div>
+                            {booking.review.comment && (
+                              <p style={{ margin: 0, fontSize: '12px', color: '#475569', fontStyle: 'italic' }}>
+                                "{booking.review.comment}"
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ─── Real Messaging Panel Modal ─── */}
+        {activeMessagingBooking && (
+          <div className="modal-overlay" style={{ zIndex: 300 }}>
+            <div className="modal-content" style={{ maxWidth: '500px', height: '540px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+              {/* Chat header */}
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0A3B2A', borderRadius: '16px 16px 0 0' }}>
+                <div>
+                  <h5 style={{ margin: 0, color: 'white', fontWeight: '800', fontSize: '14px' }}>
+                    💬 Message Host — {activeMessagingBooking.property?.name || 'Property'}
+                  </h5>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)' }}>
+                    Booking #{activeMessagingBooking._id?.slice(-6)?.toUpperCase()}
+                  </span>
+                </div>
+                <button onClick={handleCloseMessaging} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}>
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Messages list */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#F8FAFC' }}>
+                {messagesLoading ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: '#94A3B8', fontSize: '13px' }}>Loading messages...</div>
+                ) : messages.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <MessageSquare size={32} style={{ color: '#CBD5E1', margin: '0 auto 12px' }} />
+                    <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>No messages yet. Say hello to your host!</p>
+                  </div>
+                ) : (
+                  messages.map(msg => {
+                    const isMe = msg.sender?._id === user?._id || msg.sender === user?._id;
+                    return (
+                      <div key={msg._id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                        <div style={{
+                          maxWidth: '75%', padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                          background: isMe ? '#0A3B2A' : 'white',
+                          color: isMe ? 'white' : '#1E293B',
+                          fontSize: '13px', fontWeight: '500',
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+                        }}>
+                          {!isMe && (
+                            <p style={{ margin: '0 0 4px', fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase' }}>
+                              {msg.sender?.name || 'Host'}
+                            </p>
+                          )}
+                          <p style={{ margin: 0 }}>{msg.text}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: '10px', opacity: 0.6, textAlign: 'right' }}>
+                            {new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Message input */}
+              <form onSubmit={handleSendMessage} style={{ padding: '12px 16px', borderTop: '1px solid #E2E8F0', display: 'flex', gap: '8px', background: 'white', borderRadius: '0 0 16px 16px' }}>
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  placeholder="Type a message to your host..."
+                  style={{
+                    flex: 1, padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '10px',
+                    fontSize: '13px', outline: 'none', background: '#F8FAFC'
+                  }}
+                  disabled={sendingMessage}
+                />
+                <button
+                  type="submit"
+                  disabled={!chatInput.trim() || sendingMessage}
+                  style={{
+                    width: '42px', height: '42px', background: '#0A3B2A', color: 'white',
+                    border: 'none', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: chatInput.trim() && !sendingMessage ? 'pointer' : 'not-allowed',
+                    opacity: chatInput.trim() && !sendingMessage ? 1 : 0.5, transition: 'all 0.2s'
+                  }}
+                >
+                  <Send size={16} />
+                </button>
+              </form>
+            </div>
           </div>
         )}
       </div>
@@ -695,60 +973,8 @@ const Profile = () => {
         </div>
       )}
 
-      {/* Messages Modal */}
-      {activeModal === 'messages' && (
-        <div className="modal-overlay">
-          <div className="modal-content messages-modal">
-            <div className="flex-between modal-header" style={{ marginBottom: '20px' }}>
-              <h4>{translate('property_chats', language)}</h4>
-              <button onClick={() => { setActiveModal(null); setActiveChat(null); }} className="btn-close"><X size={20} /></button>
-            </div>
 
-            {activeChat ? (
-              <div className="chat-window-view">
-                <button onClick={() => setActiveChat(null)} className="btn btn-secondary btn-small" style={{ marginBottom: '14px', background: '#E8F0EC', color: '#0A3B2A' }}>
-                  ← {translate('back_to_chats', language)}
-                </button>
-                <h5 style={{ fontWeight: '800', marginBottom: '14px', color: '#0A3B2A' }}>Chatting with {activeChat.host}</h5>
-                <div className="chat-messages-container">
-                  <div className="msg bubble-received">{activeChat.text}</div>
-                </div>
-                <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '8px' }}>
-                  <input 
-                    type="text" 
-                    placeholder={translate('type_message', language)} 
-                    className="form-control"
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    required
-                  />
-                  <button type="submit" className="btn btn-primary" style={{ background: '#0A3B2A' }}>{translate('send', language)}</button>
-                </form>
-              </div>
-            ) : (
-              <div className="chats-list flex-col" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {chats.map(chat => (
-                  <div 
-                    key={chat.id} 
-                    onClick={() => setActiveChat(chat)}
-                    className="chat-item card flex-between" 
-                    style={{ padding: '16px', cursor: 'pointer', border: chat.unread ? '1.5px solid #0A3B2A' : '1px solid #E5E7EB', background: chat.unread ? '#E8F0EC' : 'white', borderRadius: '12px' }}
-                  >
-                    <div>
-                      <h6 style={{ fontWeight: '800', color: '#0A3B2A' }}>{chat.host}</h6>
-                      <p style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>{chat.text}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '10px', color: '#9CA3AF' }}>{chat.time}</span>
-                      {chat.unread && <span className="indicator-unread-dot" style={{ display: 'block', width: '8px', height: '8px', background: '#0A3B2A', borderRadius: '50%', margin: '4px 0 0 auto' }}></span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Messages Modal — OLD, kept as fallback but now handled by handleOpenMessaging in bookings tab */}
 
       {/* Review Modal */}
       {reviewModalBooking && (

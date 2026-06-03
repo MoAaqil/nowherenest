@@ -18,7 +18,7 @@ const hasPropertyAccess = async (userId, role, property) => {
 // Create a Property
 exports.createProperty = async (req, res) => {
   try {
-    const { name, description, type, address, location, starRating, checkInTime, checkOutTime, amenities, photos, identityProofType, identityProofNumber, usps } = req.body;
+    const { name, description, type, address, location, checkInTime, checkOutTime, amenities, photos, identityProofType, identityProofNumber, usps, state, district } = req.body;
     
     if (req.user.role !== 'owner' && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Only owners can create properties' });
@@ -31,14 +31,16 @@ exports.createProperty = async (req, res) => {
       type,
       address,
       location,
-      starRating,
+      starRating: 3,
       checkInTime,
       checkOutTime,
       amenities: amenities || [],
       photos: photos || [],
       identityProofType,
       identityProofNumber,
-      usps: usps || []
+      usps: usps || [],
+      state: state || '',
+      district: district || ''
     });
 
     res.status(201).json({ success: true, property });
@@ -99,7 +101,7 @@ exports.getOwnerProperties = async (req, res) => {
 // Get Property By ID
 exports.getPropertyById = async (req, res) => {
   try {
-    const property = await Property.findById(req.params.id).populate('owner', 'name email phone bankDetails isLicensed profileImage');
+    const property = await Property.findById(req.params.id).populate('owner', 'name email phone bankDetails isLicensed profileImage nestPartner');
 
     if (!property) {
       return res.status(404).json({ success: false, message: 'Property not found' });
@@ -149,6 +151,9 @@ exports.updateProperty = async (req, res) => {
     if (!hasAccess) {
       return res.status(403).json({ success: false, message: 'Not authorized to update this property' });
     }
+
+    // Enforce ratings are only dynamically generated from user reviews
+    delete req.body.starRating;
 
     const updatedProperty = await Property.findByIdAndUpdate(req.params.id, req.body, {
       new: true,

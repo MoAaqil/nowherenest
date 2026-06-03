@@ -13,12 +13,14 @@ import {
   XCircle,
   HelpCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  RefreshCw,
+  ShieldAlert
 } from 'lucide-react';
 import './Dashboard.css';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
 
   const [properties, setProperties] = useState([]);
@@ -26,6 +28,14 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Verification states
+  const [licenseInput, setLicenseInput] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  const [verifySuccess, setVerifySuccess] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState('');
 
   // Verification dialog
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -43,6 +53,50 @@ const Dashboard = () => {
       fetchDashboardStats(selectedPropertyId);
     }
   }, [selectedPropertyId]);
+
+  const handleSelfVerify = async (e) => {
+    e.preventDefault();
+    if (!licenseInput.trim()) return;
+    setIsVerifying(true);
+    setVerifyError('');
+    setVerifySuccess('');
+    try {
+      const res = await api.auth.updateProfile({ licenseId: licenseInput.trim() });
+      setUser(prev => ({ ...prev, ...res.user }));
+      setVerifySuccess('Account successfully verified! You are now fully licensed.');
+      // Refresh properties & stats
+      fetchProperties();
+    } catch (err) {
+      setVerifyError(err.message || 'Verification failed. Please check your unique ID.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleScanStatus = async () => {
+    setIsScanning(true);
+    setScanMessage('');
+    try {
+      // 1. Refetch user profile details
+      const res = await api.auth.getMe();
+      setUser(res.user);
+      
+      // 2. Refetch dashboard properties & stats
+      const propsRes = await api.properties.getOwnerProperties();
+      setProperties(propsRes.properties);
+      if (propsRes.properties.length > 0) {
+        const nextPropId = selectedPropertyId || propsRes.properties[0]._id;
+        setSelectedPropertyId(nextPropId);
+        await fetchDashboardStats(nextPropId);
+      }
+      
+      setScanMessage(res.user.isLicensed ? 'Verification scan successful! Your account is active.' : 'Scan complete. Account is still pending verification.');
+    } catch (err) {
+      setScanMessage('Scan failed: ' + err.message);
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const fetchProperties = async () => {
     setLoading(true);
@@ -161,16 +215,76 @@ const Dashboard = () => {
       {error && <div className="error-card">{error}</div>}
 
       {user && !user.isLicensed && (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', border: '1.5px solid #F59E0B', borderRadius: '16px', padding: '16px 24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)', textAlign: 'left' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#D97706', color: 'white', flexShrink: 0 }}>
-            <Clock size={20} />
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', border: '1.5px solid #F59E0B', borderRadius: '16px', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)', textAlign: 'left' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#D97706', color: 'white', flexShrink: 0 }}>
+              <Clock size={20} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h5 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#78350F' }}>Verification Pending</h5>
+              <p style={{ margin: '4px 0 0 0', fontSize: '13.5px', color: '#92400E', lineHeight: '1.5' }}>
+                Your host account is currently pending manual verification by the Nowhere Nest administration. Any stays you add will not be visible on the customer explore dashboard until your account is fully licensed.
+              </p>
+            </div>
           </div>
-          <div>
-            <h5 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#78350F' }}>Verification Pending</h5>
-            <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#92400E', lineHeight: '1.4' }}>
-              Your host account is currently pending manual verification by the Nowhere Nest administration. Any stays you add will not be visible on the customer explore dashboard until your account is fully licensed.
-            </p>
+
+          <div style={{ borderTop: '1px dashed rgba(120, 53, 15, 0.2)', paddingTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Self verification form */}
+            <form onSubmit={handleSelfVerify} style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1, minWidth: '280px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '800', color: '#78350F', textTransform: 'uppercase' }}>Verify Account using Unique ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. NWN-HOST-123456"
+                  value={licenseInput}
+                  onChange={e => setLicenseInput(e.target.value)}
+                  className="form-control"
+                  style={{ padding: '8px 12px', width: '220px', fontSize: '13px', fontWeight: '600', border: '1px solid #D97706' }}
+                  required
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="btn btn-primary" 
+                style={{ padding: '10px 20px', background: '#D97706', borderColor: '#D97706', fontSize: '13px', fontWeight: '700', borderRadius: '8px', color: 'white', alignSelf: 'flex-end' }}
+                disabled={isVerifying}
+              >
+                {isVerifying ? 'Verifying...' : 'Verify'}
+              </button>
+            </form>
+
+            {/* Scan Status Control */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', alignSelf: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={handleScanStatus}
+                className="btn btn-outline flex-center gap-6"
+                style={{ padding: '10px 20px', borderColor: '#D97706', color: '#78350F', fontSize: '13px', fontWeight: '700', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                disabled={isScanning}
+              >
+                <RefreshCw size={14} className={isScanning ? 'spin-animation' : ''} />
+                {isScanning ? 'Scanning...' : 'Scan Status / Refresh'}
+              </button>
+            </div>
           </div>
+
+          {/* Feedback Messages */}
+          {(verifyError || verifySuccess || scanMessage) && (
+            <div style={{ marginTop: '4px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', backgroundColor: verifySuccess || (scanMessage && scanMessage.toLowerCase().includes('successful')) ? '#DCFCE7' : '#FEE2E2', color: verifySuccess || (scanMessage && scanMessage.toLowerCase().includes('successful')) ? '#16A34A' : '#EF4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldAlert size={16} />
+              <span>{verifyError || verifySuccess || scanMessage}</span>
+            </div>
+          )}
+
+          <style>{`
+            .spin-animation {
+              animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       )}
 

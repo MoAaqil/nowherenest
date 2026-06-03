@@ -29,16 +29,14 @@ const mapPropertyToListing = async (property) => {
     advanceDeposit: type === 'rental' ? minPrice * 2 : 0,
     location: {
       address: property.address,
-      lat: property.location?.lat || 9.5929,
-      lng: property.location?.lng || 76.4227
+      lat: property.location?.coordinates?.[1] || 9.5929,
+      lng: property.location?.coordinates?.[0] || 76.4227
     },
+    landscapeCategory: property.landscapeCategory || 'city',
     amenities: property.amenities,
     images: property.photos,
     starRating: property.starRating,
-    usps: (property.usps && property.usps.length > 0) ? property.usps : [
-      { title: 'Sunset Backwater Shikara Cruise', description: '2-hour private boat cruise in Vembanad lake waters', price: 2500, chargeType: 'per_family' },
-      { title: 'Guided Tea Plantations Trekking', description: 'Guided morning walk to tea gardens and waterfalls', price: 1200, chargeType: 'per_family' }
-    ],
+    usps: property.usps || [],
     createdAt: property.createdAt
   };
 };
@@ -53,7 +51,7 @@ exports.createListing = async (req, res) => {
 
 exports.getListings = async (req, res) => {
   try {
-    const { type, category, search, amenities } = req.query;
+    const { type, category, landscapeCategory, search, amenities, lat, lng, radius } = req.query;
     
     // Locate all verified hosts
     const User = require('../models/User');
@@ -78,15 +76,37 @@ exports.getListings = async (req, res) => {
       query.amenities = { $all: amenitiesArr };
     }
 
-    const properties = await Property.find(query).populate('owner', 'name email phone isLicensed profileImage');
+    let properties = [];
+    if (lat && lng) {
+      const maxDist = radius ? parseInt(radius) * 1000 : 50000; // default 50km
+      properties = await Property.aggregate([
+        {
+          $geoNear: {
+            near: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+            distanceField: 'distance', // calculated distance in meters
+            maxDistance: maxDist,
+            query: query,
+            spherical: true
+          }
+        }
+      ]);
+      properties = await Property.populate(properties, { path: 'owner', select: 'name email phone isLicensed profileImage' });
+    } else {
+      properties = await Property.find(query).populate('owner', 'name email phone isLicensed profileImage');
+    }
+
     const mappedListings = [];
 
     for (const prop of properties) {
       const mapped = await mapPropertyToListing(prop);
+      if (prop.distance !== undefined) {
+        mapped.distance = prop.distance / 1000; // Attach distance in km to the listing
+      }
       // Filter by type or category if requested
       let match = true;
       if (type && mapped.type !== type) match = false;
       if (category && mapped.category !== category) match = false;
+      if (landscapeCategory && mapped.landscapeCategory !== landscapeCategory) match = false;
       
       if (match) {
         mappedListings.push(mapped);

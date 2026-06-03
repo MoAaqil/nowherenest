@@ -25,6 +25,15 @@ const userSchema = new mongoose.Schema({
   licenseId: { type: String, default: '' },       // NWN generated license ID
   isLicensed: { type: Boolean, default: false },  // True once host enters matching license ID
   profileImage: { type: String, default: '' },    // Host profile image URL
+  owlsPoints: { type: Number, default: 0 },
+  favourites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Property' }],
+  aadharNumber: { type: String, default: '' },
+  aadharPhotoUrl: { type: String, default: '' },
+  hostAddress: { type: String, default: '' },
+  nestPartner: { type: Boolean, default: false },
+  nestPartnerSince: { type: Date, default: null },
+  vibeCredits: { type: Number, default: 0 },
+  razorpayAccountId: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 

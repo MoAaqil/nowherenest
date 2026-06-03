@@ -16,7 +16,11 @@ const CabBooking = () => {
   const [ride, setRide] = useState(null);
   
   // Form fields
-  const [pickupAddress, setPickupAddress] = useState('Kottayam Railway Station, Kerala');
+  const [pickupAddress, setPickupAddress] = useState(
+    localStorage.getItem('gps_enabled') === 'true' && !isNaN(parseFloat(localStorage.getItem('user_lat')))
+      ? `Your Current Location (${parseFloat(localStorage.getItem('user_lat')).toFixed(4)}, ${parseFloat(localStorage.getItem('user_lng')).toFixed(4)})`
+      : 'Kottayam Railway Station, Kerala'
+  );
   // Destination will be locked to the stay address
   const [destinationAddress, setDestinationAddress] = useState('');
   const [rideType, setRideType] = useState('cab'); // bike, auto, cab
@@ -32,8 +36,13 @@ const CabBooking = () => {
   const [driverInfo, setDriverInfo] = useState(null);
   const [distance, setDistance] = useState(3.5); // default mock distance in km
   
-  // Coordinates mapping
-  const pickupCoords = { lat: 9.5915, lng: 76.5221 }; // Kottayam station coords
+  // Coordinates mapping — read real GPS from localStorage (set by App.jsx geolocation), fallback to Kottayam station
+  const savedLat = parseFloat(localStorage.getItem('user_lat'));
+  const savedLng = parseFloat(localStorage.getItem('user_lng'));
+  const gpsAvailable = localStorage.getItem('gps_enabled') === 'true' && !isNaN(savedLat) && !isNaN(savedLng);
+  const pickupCoords = gpsAvailable
+    ? { lat: savedLat, lng: savedLng }
+    : { lat: 9.5915, lng: 76.5221 }; // fallback: Kottayam Railway Station
   const [destinationCoords, setDestinationCoords] = useState({ lat: 9.5929, lng: 76.4227 }); // Stay coords
 
   useEffect(() => {

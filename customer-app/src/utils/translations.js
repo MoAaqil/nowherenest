@@ -11,14 +11,14 @@ const dictionary = {
 
     // Profile Page / Header
     welcome: "Welcome",
-    silver_member: "Silver Member",
-    gold_member: "Gold Member",
-    platinum_member: "Platinum Member",
-    diamond_member: "Diamond Member",
+    classic_member: "Classic Member",
+    grand_member: "Grand Member",
+    prestige_member: "Prestige Member",
+    royal_member: "Royal Member",
     logout_session: "Logout Session",
 
     // NWN Cash
-    nwn_cash_balance: "NWN Cash Balance",
+    nwn_cash_balance: "Owls Points Balance",
     switched_to: "Switched to",
     setting_saved: "Setting Saved",
 
@@ -27,10 +27,10 @@ const dictionary = {
     active_plan_info: "Active Plan Perks",
     total_spendings: "Total Spendings",
     spend_more: "Spend another {amount} to unlock the next level!",
-    unlocked_gold: "Gold Perks Unlocked: Use code GOLD10 for 10% off stays!",
-    unlocked_platinum: "Platinum Perks Unlocked: Use code PLATINUM15 for 15% off and a Free Ride Ticket!",
-    unlocked_diamond: "Diamond Perks Unlocked: Use code DIAMOND20 for 20% off, free rides, and Lounge Access!",
-    unlocked_silver: "Basic perks active. Book stays to unlock next tier!",
+    unlocked_grand: "Grand Perks Unlocked: Use code GRAND10 for 10% off stays!",
+    unlocked_prestige: "Prestige Perks Unlocked: Use code PRESTIGE15 for 15% off and a Free Ride Ticket!",
+    unlocked_royal: "Royal Perks Unlocked: Use code ROYAL20 for 20% off, free rides, and Lounge Access!",
+    unlocked_classic: "Basic Classic perks active. Book stays to unlock next tier!",
 
     // Settings
     account_settings: "Account Settings",
@@ -65,9 +65,9 @@ const dictionary = {
     search_placeholder: "Search destination, resort, address...",
     find_stays: "Find Stays",
     find_perfect: "Find The Perfect Place",
-    cottages: "🏕️ Cottages",
-    hotels: "🏨 Hotels",
-    apartments: "🏢 Apartments",
+    cottages: "Cottages",
+    hotels: "Hotels",
+    apartments: "Apartments",
     recommended: "Recommended Stays",
     browse_rentals: "Browse Rent/PGs →",
     curated_tours: "Curated Stay Experiences",
@@ -171,14 +171,14 @@ const dictionary = {
 
     // Profile Page / Header
     welcome: "வரவேற்கிறோம்",
-    silver_member: "சில்வர் உறுப்பினர்",
-    gold_member: "கோல்ட் உறுப்பினர்",
-    platinum_member: "பிளாட்டினம் உறுப்பினர்",
-    diamond_member: "டைமண்ட் உறுப்பினர்",
+    classic_member: "கிளாசிக் உறுப்பினர்",
+    grand_member: "கிராண்ட் உறுப்பினர்",
+    prestige_member: "பிரெஸ்டீஜ் உறுப்பினர்",
+    royal_member: "ராயல் உறுப்பினர்",
     logout_session: "வெளியேறு கணக்கு",
 
     // NWN Cash
-    nwn_cash_balance: "NWN பண இருப்பு",
+    nwn_cash_balance: "அவுல்ஸ் புள்ளி இருப்பு",
     switched_to: "மாற்றப்பட்டது",
     setting_saved: "அமைப்பு சேமிக்கப்பட்டது",
 
@@ -187,10 +187,10 @@ const dictionary = {
     active_plan_info: "செயலில் உள்ள திட்ட நன்மைகள்",
     total_spendings: "மொத்த செலவுகள்",
     spend_more: "அடுத்த நிலையைத் திறக்க இன்னும் {amount} செலவிடுங்கள்!",
-    unlocked_gold: "கோல்ட் நன்மைகள் திறக்கப்பட்டன: தங்குமிடங்களில் 10% தள்ளுபடி பெற GOLD10 குறியீட்டைப் பயன்படுத்தவும்!",
-    unlocked_platinum: "பிளாட்டினம் நன்மைகள் திறக்கப்பட்டன: 15% தள்ளுபடி மற்றும் இலவச சவாரி டிக்கெட்டைப் பெற PLATINUM15 குறியீட்டைப் பயன்படுத்தவும்!",
-    unlocked_diamond: "டைமண்ட் நன்மைகள் திறக்கப்பட்டன: 20% தள்ளுபடி, இலவச சவாரிகள் மற்றும் லவுஞ்ச் அணுகலைப் பெற DIAMOND20 குறியீட்டைப் பயன்படுத்தவும்!",
-    unlocked_silver: "அடிப்படை நன்மைகள் செயலில் உள்ளன. அடுத்த நிலையைத் திறக்க முன்பதிவு செய்யுங்கள்!",
+    unlocked_grand: "கிராண்ட் நன்மைகள் திறக்கப்பட்டன: தங்குமிடங்களில் 10% தள்ளுபடி பெற GRAND10 குறியீட்டைப் பயன்படுத்தவும்!",
+    unlocked_prestige: "பிரெஸ்டீஜ் நன்மைகள் திறக்கப்பட்டன: 15% தள்ளுபடி மற்றும் இலவச சவாரி டிக்கெட்டைப் பெற PRESTIGE15 குறியீட்டைப் பயன்படுத்தவும்!",
+    unlocked_royal: "ராயல் நன்மைகள் திறக்கப்பட்டன: 20% தள்ளுபடி, இலவச சவாரிகள் மற்றும் லவுஞ்ச் அணுகலைப் பெற ROYAL20 குறியீட்டைப் பயன்படுத்தவும்!",
+    unlocked_classic: "அடிப்படை கிளாசிக் நன்மைகள் செயலில் உள்ளன. அடுத்த நிலையைத் திறக்க முன்பதிவு செய்யுங்கள்!",
 
     // Settings
     account_settings: "கணக்கு அமைப்புகள்",
@@ -225,9 +225,9 @@ const dictionary = {
     search_placeholder: "இடம், ரிசார்ட் அல்லது முகவரியை தேடுங்கள்...",
     find_stays: "தங்குமிடங்களைக் கண்டறி",
     find_perfect: "சரியான இடத்தைக் கண்டறியவும்",
-    cottages: "🏕️ குடிசைகள்",
-    hotels: "🏨 ஹோட்டல்கள்",
-    apartments: "🏢 குடியிருப்புகள்",
+    cottages: "குடிசைகள்",
+    hotels: "ஹோட்டல்கள்",
+    apartments: "குடியிருப்புகள்",
     recommended: "பரிந்துரைக்கப்பட்ட தங்குமிடங்கள்",
     browse_rentals: "வாடகை/PG-களை உலாவுக →",
     curated_tours: "சிறப்பு தங்குமிட அனுபவங்கள்",

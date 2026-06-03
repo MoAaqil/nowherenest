@@ -49,13 +49,39 @@ export const api = {
   admin: {
     getStats: () => fetchWithAuth('/admin/stats'),
     updateCommissionRate: (rate) => fetchWithAuth('/admin/commission', { method: 'PUT', body: { rate } }),
-    getHosts: () => fetchWithAuth('/admin/hosts'),
+
+    // Host Management
+    getHosts: (phone = '') => {
+      const params = new URLSearchParams();
+      if (phone && phone.trim()) params.append('phone', phone.trim());
+      return fetchWithAuth(`/admin/hosts${params.toString() ? '?' + params.toString() : ''}`);
+    },
     verifyHost: (id, licenseId) => fetchWithAuth(`/admin/hosts/${id}/verify`, { method: 'PUT', body: { licenseId } }),
+    toggleNestPartner: (id) => fetchWithAuth(`/admin/hosts/${id}/nest-partner`, { method: 'PUT' }),
+    addVibeCredits: (id, credits) => fetchWithAuth(`/admin/hosts/${id}/vibe-credits`, { method: 'POST', body: { credits } }),
+
+    // Property Management
     getProperties: () => fetchWithAuth('/admin/properties'),
     licenseProperty: (id, licenseNumber) => fetchWithAuth(`/admin/properties/${id}/license`, { method: 'PUT', body: { licenseNumber } }),
+
+    // Region Stats
+    getRegionStats: () => fetchWithAuth('/admin/region-stats'),
+
+    // Vibe Queue
+    getPendingVibes: () => fetchWithAuth('/admin/vibes/pending'),
+    verifyVibe: (id) => fetchWithAuth(`/admin/vibes/${id}/verify`, { method: 'PUT' }),
+    rejectVibe: (id, reason) => fetchWithAuth(`/admin/vibes/${id}/reject`, { method: 'PUT', body: { reason } }),
   },
   payouts: {
     getAll: () => fetchWithAuth('/payouts'),
     updateStatus: (id, status) => fetchWithAuth(`/payouts/${id}/status`, { method: 'PUT', body: { status } }),
-  }
+  },
+  channel: {
+    getDashboard: () => fetchWithAuth('/channel/dashboard'),
+    simulateSync: (propertyId, roomId) => fetchWithAuth('/channel/sync', { method: 'POST', body: { propertyId, roomId } }),
+    updateRoomInventory: (roomId, totalInventory, maintenanceBlocks) =>
+      fetchWithAuth(`/channel/rooms/${roomId}/inventory`, { method: 'PUT', body: { totalInventory, maintenanceBlocks } }),
+  },
+  // Generic GET helper for the admin app
+  get: (endpoint) => fetchWithAuth(endpoint),
 };

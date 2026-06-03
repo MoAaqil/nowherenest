@@ -1,7 +1,30 @@
 .profile-page-wrapper {
-  background-color: #F8FAFC; /* Slate 50 off-white background */
+  background-color: #F8FAFC;
   min-height: 100vh;
-  padding-bottom: 120px; /* Safe padding for floating bottom nav */
+  padding-bottom: 120px;
+}
+
+/* Toast Notification */
+.profile-toast-alert {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0A3B2A;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  z-index: 99999;
+  box-shadow: 0 8px 24px rgba(10, 59, 42, 0.3);
+  animation: slideUpFade 0.3s ease;
+  white-space: nowrap;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 /* 1. Header Hero Panel (Deep Forest Green) */

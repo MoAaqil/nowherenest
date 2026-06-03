@@ -11,6 +11,15 @@ const signToken = (id) => {
 // Global cache for simulated OTPs: phone -> otp
 const otpCache = {};
 
+const sanitizeUser = (user) => {
+  const u = user.toObject ? user.toObject() : { ...user };
+  delete u.password;
+  if (u.role !== 'admin' && !u.isLicensed) {
+    u.licenseId = '';
+  }
+  return u;
+};
+
 exports.register = async (req, res) => {
   const { name, email, password, phone, role } = req.body;
   try {
@@ -19,29 +28,23 @@ exports.register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'User already exists with this email' });
     }
 
+    const initialRole = role || 'customer';
+    const generatedLicenseId = initialRole === 'owner' ? `NWN-HOST-${Math.floor(100000 + Math.random() * 900000)}` : '';
+
     const user = await User.create({
       name,
       email,
       password,
       phone,
-      role: role || 'customer'
+      role: initialRole,
+      licenseId: generatedLicenseId,
+      isLicensed: false
     });
 
     res.status(201).json({
       success: true,
       token: signToken(user._id),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        walletBalance: user.walletBalance,
-        isVerified: user.isVerified,
-        licenseId: user.licenseId,
-        isLicensed: user.isLicensed,
-        profileImage: user.profileImage
-      }
+      user: sanitizeUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -63,15 +66,7 @@ exports.login = async (req, res) => {
     res.status(200).json({
       success: true,
       token: signToken(user._id),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        walletBalance: user.walletBalance,
-        isVerified: user.isVerified
-      }
+      user: sanitizeUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -129,15 +124,7 @@ exports.verifyOTP = async (req, res) => {
     res.status(200).json({
       success: true,
       token: signToken(user._id),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        walletBalance: user.walletBalance,
-        isVerified: user.isVerified
-      }
+      user: sanitizeUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -146,8 +133,11 @@ exports.verifyOTP = async (req, res) => {
 
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    res.status(200).json({ success: true, user });
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.status(200).json({ success: true, user: sanitizeUser(user) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -167,16 +157,7 @@ exports.updateBankDetails = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Bank account details updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        walletBalance: user.walletBalance,
-        bankDetails: user.bankDetails,
-        isVerified: user.isVerified
-      }
+      user: sanitizeUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -184,7 +165,7 @@ exports.updateBankDetails = async (req, res) => {
 };
 
 exports.updateProfile = async (req, res) => {
-  const { name, phone, role, licenseId, profileImage, password } = req.body;
+  const { name, phone, role, licenseId, profileImage, password, aadharNumber, aadharPhotoUrl, hostAddress } = req.body;
   try {
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -195,19 +176,24 @@ exports.updateProfile = async (req, res) => {
     if (phone) user.phone = phone;
     if (role) user.role = role;
     if (profileImage !== undefined) user.profileImage = profileImage;
+    if (aadharNumber !== undefined) user.aadharNumber = aadharNumber;
+    if (aadharPhotoUrl !== undefined) user.aadharPhotoUrl = aadharPhotoUrl;
+    if (hostAddress !== undefined) user.hostAddress = hostAddress;
     if (password && password.length >= 6) {
       user.password = password; // Will be hashed by pre-save hook
     }
 
+    // Auto-generate licenseId if upgrading/setting role to owner and none exists
+    if (user.role === 'owner' && !user.licenseId) {
+      user.licenseId = `NWN-HOST-${Math.floor(100000 + Math.random() * 900000)}`;
+    }
+
     // License ID verification
-    if (licenseId !== undefined) {
-      user.licenseId = licenseId;
-      // Verify the license ID format: nwn(2 alpha)(last 4 of phone)(2 of email)(3 serial digits)
-      // Just store it - we verify by checking format prefix 'nwn'
-      if (licenseId && licenseId.toLowerCase().startsWith('nwn')) {
+    if (licenseId !== undefined && licenseId !== '') {
+      if (user.licenseId && licenseId.trim().toLowerCase() === user.licenseId.trim().toLowerCase()) {
         user.isLicensed = true;
       } else {
-        user.isLicensed = false;
+        return res.status(400).json({ success: false, message: 'Invalid verification code. Please enter the correct unique host ID.' });
       }
     }
 
@@ -216,20 +202,50 @@ exports.updateProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        walletBalance: user.walletBalance,
-        isVerified: user.isVerified,
-        licenseId: user.licenseId,
-        isLicensed: user.isLicensed,
-        profileImage: user.profileImage,
-        bankDetails: user.bankDetails
-      }
+      user: sanitizeUser(user)
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.toggleFavourite = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    const propertyId = req.params.propertyId;
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(propertyId)) {
+      return res.status(400).json({ success: false, message: 'Invalid property ID' });
+    }
+    
+    const idx = user.favourites.findIndex(f => f.toString() === propertyId);
+    let action;
+    if (idx > -1) {
+      user.favourites.splice(idx, 1);
+      action = 'removed';
+    } else {
+      user.favourites.push(propertyId);
+      action = 'added';
+    }
+    await user.save();
+    
+    res.status(200).json({ success: true, action, favourites: user.favourites });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getFavourites = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate({
+      path: 'favourites',
+      populate: { path: 'owner', select: 'name email isLicensed' }
+    });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    res.status(200).json({ success: true, favourites: user.favourites || [] });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

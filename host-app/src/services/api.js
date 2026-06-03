@@ -75,6 +75,7 @@ export const api = {
     getById: (id) => fetchWithAuth(`/bookings/${id}`),
     verifyOTP: (id, otp) => fetchWithAuth(`/bookings/${id}/verify-otp`, { method: 'POST', body: { otp } }),
     checkOut: (id) => fetchWithAuth(`/bookings/${id}/checkout`, { method: 'POST' }),
+    updateUspSchedule: (id, uspId, updateData) => fetchWithAuth(`/bookings/${id}/usps/${uspId}`, { method: 'PUT', body: updateData }),
   },
 
   // Housekeeping API

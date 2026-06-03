@@ -47,7 +47,24 @@ exports.createRoom = async (req, res) => {
 // Get Rooms for a Property
 exports.getRoomsByProperty = async (req, res) => {
   try {
-    const rooms = await Room.find({ property: req.params.propertyId });
+    const rooms = await Room.find({ property: req.params.propertyId }).lean();
+    const Booking = require('../models/Booking');
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    for (let room of rooms) {
+      const activeBookings = await Booking.countDocuments({
+        room: room._id,
+        status: { $in: ['confirmed', 'checked_in'] },
+        startDate: { $lte: now },
+        endDate: { $gte: today },
+      });
+      const totalInventory = room.totalInventory || 1;
+      const maintenanceBlocks = room.maintenanceBlocks || 0;
+      room.roomsAvailable = Math.max(0, totalInventory - activeBookings - maintenanceBlocks);
+    }
+
     res.status(200).json({ success: true, count: rooms.length, rooms });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -137,6 +154,29 @@ exports.bulkAddRooms = async (req, res) => {
 
     const insertedRooms = await Room.insertMany(roomsToInsert);
     res.status(201).json({ success: true, count: insertedRooms.length, rooms: insertedRooms });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get Room Availability (blocked dates)
+exports.getRoomAvailability = async (req, res) => {
+  try {
+    const room = await Room.findById(req.params.id).select('blockedDates availability cancellationPolicy');
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+    // Clean up past blocked dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const futureBlockedDates = room.blockedDates.filter(d => new Date(d) >= today);
+    res.status(200).json({
+      success: true,
+      roomId: room._id,
+      blockedDates: futureBlockedDates,
+      availability: room.availability,
+      cancellationPolicy: room.cancellationPolicy
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

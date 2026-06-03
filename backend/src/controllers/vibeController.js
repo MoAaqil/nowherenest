@@ -39,8 +39,10 @@ const resolveUrl = (targetUrl) => {
 // Fetch all vibes (reels)
 exports.getVibes = async (req, res) => {
   try {
-    const vibes = await Vibe.find()
-      .populate('owner', 'name email profileImage')
+    // Admins see all vibes; other users only see verified vibes
+    const filter = (req.user && req.user.role === 'admin') ? {} : { status: 'verified' };
+    const vibes = await Vibe.find(filter)
+      .populate('owner', 'name email profileImage nestPartner')
       .populate('property', 'name address starRating photos type')
       .sort('-createdAt');
 
@@ -53,6 +55,7 @@ exports.getVibes = async (req, res) => {
 // Create a new vibe (Only for owners/hosts)
 exports.createVibe = async (req, res) => {
   try {
+    let vibeType = 'free';
     const { propertyId, videoUrl, caption, title } = req.body;
 
     if (req.user.role !== 'owner' && req.user.role !== 'admin') {
@@ -72,6 +75,31 @@ exports.createVibe = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You can only publish vibes for your own properties' });
     }
 
+    // Check vibe upload limits
+    const owner = await require('../models/User').findById(req.user.id);
+    if (owner.nestPartner) {
+      // Nest Partners: up to 12 vibes per calendar month
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const monthlyCount = await Vibe.countDocuments({
+        owner: req.user.id,
+        createdAt: { $gte: startOfMonth }
+      });
+      if (monthlyCount >= 12) {
+        return res.status(403).json({ success: false, message: 'Nest Partner monthly vibe limit reached (12/month). Resets on 1st of next month.' });
+      }
+      vibeType = 'partner';
+    } else {
+      // Non-partners must have vibe credits
+      if (!owner.vibeCredits || owner.vibeCredits < 1) {
+        return res.status(403).json({ success: false, message: 'Insufficient vibe credits. Purchase credits from your dashboard (4 vibes per ₹100).' });
+      }
+      owner.vibeCredits -= 1;
+      await owner.save();
+      vibeType = 'credited';
+    }
+
     // Resolve short redirects (e.g. pin.it)
     let resolvedUrl = videoUrl.trim();
     if (resolvedUrl.includes('pin.it') || resolvedUrl.includes('youtu.be') || resolvedUrl.includes('bit.ly') || resolvedUrl.includes('tinyurl.com')) {
@@ -83,10 +111,12 @@ exports.createVibe = async (req, res) => {
       property: propertyId,
       videoUrl: resolvedUrl,
       title: title || '',
-      caption: caption || ''
+      caption: caption || '',
+      status: 'pending',
+      vibeType: vibeType || 'free'
     });
 
-    res.status(201).json({ success: true, message: 'Vibe published successfully', vibe });
+    res.status(201).json({ success: true, message: 'Vibe submitted for admin review! It will appear publicly once approved.', vibe });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

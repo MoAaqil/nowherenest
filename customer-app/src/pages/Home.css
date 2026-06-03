@@ -62,6 +62,70 @@
   flex: 1;
 }
 
+/* ─── Search Autocomplete Dropdown ─── */
+.suggestions-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -56px; /* align with the left edge of parent container including icon */
+  right: 0;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.12);
+  z-index: 500;
+  overflow: hidden;
+  animation: fadeSlideDown 0.15s ease;
+  min-width: 300px;
+}
+
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.suggestion-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.suggestion-item:last-child { border-bottom: none; }
+
+.suggestion-item:hover {
+  background: var(--primary-light);
+}
+
+.suggestion-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.suggestion-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.suggestion-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.suggestion-sublabel {
+  font-size: 11px;
+  color: var(--text-medium);
+  font-weight: 500;
+}
+
 .search-icon {
   color: var(--text-light);
 }
@@ -188,20 +252,25 @@
 .stay-horizontal-card {
   display: grid;
   grid-template-columns: 200px 1fr;
+  height: 180px;         /* fixed height — every card same size */
   min-height: 180px;
+  max-height: 180px;
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-sm);
+  overflow: hidden;      /* clip anything that overflows */
 }
 
 .card-image-panel {
   position: relative;
-  height: 100%;
+  height: 180px;   /* match card fixed height */
+  overflow: hidden;
 }
 
 .card-image-panel img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .price-tag-pill {
@@ -224,10 +293,12 @@
 }
 
 .card-info-panel {
-  padding: 16px 20px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  overflow: hidden;   /* prevent text overflow expanding height */
+  min-width: 0;
 }
 
 .card-top-row {
@@ -259,19 +330,29 @@
 }
 
 .card-info-panel h5 {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-dark);
-  margin-bottom: 6px;
+  margin: 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-location {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 12px;
   color: var(--text-medium);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.card-location span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-amenities-row {
@@ -395,15 +476,53 @@
 }
 
 /* Flash deals banner */
+/* Flash deals banner styled as a ticket coupon */
 .flash-deals-banner {
   background: linear-gradient(135deg, #0A3B2A 0%, #155e43 100%);
   color: white;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.2fr 0.8fr;
   align-items: center;
-  padding: 48px;
-  border: none;
-  text-align: left;
+  padding: 40px 48px;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(10, 59, 42, 0.15);
+}
+
+.flash-deals-banner::before,
+.flash-deals-banner::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.flash-deals-banner::before {
+  left: -10px;
+  border-right: 1.5px dashed rgba(255, 255, 255, 0.3);
+}
+
+.flash-deals-banner::after {
+  right: -10px;
+  border-left: 1.5px dashed rgba(255, 255, 255, 0.3);
+}
+
+.banner-text {
+  position: relative;
+  padding-right: 48px;
+  border-right: 2.5px dashed rgba(255, 255, 255, 0.25);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .deal-eyebrow {
@@ -459,6 +578,7 @@
   border-radius: var(--border-radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
+  margin-left: 48px;
 }
 
 .banner-visual img {
@@ -475,6 +595,23 @@
   
   .hero-visual, .map-wrapper {
     height: 300px;
+  }
+  
+  .flash-deals-banner {
+    padding: 30px;
+  }
+  
+  .banner-text {
+    border-right: none;
+    border-bottom: 2.5px dashed rgba(255, 255, 255, 0.25);
+    padding-right: 0;
+    padding-bottom: 24px;
+    margin-bottom: 24px;
+    height: auto;
+  }
+  
+  .banner-visual {
+    margin-left: 0;
   }
 }
 
@@ -1024,5 +1161,219 @@
 
 .location-badge-close:hover {
   transform: scale(1.2);
+}
+
+/* Curated stays empty state owl animation */
+.empty-owl-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: #f8fafc;
+  border: 1.5px dashed var(--border-color);
+  border-radius: 16px;
+  grid-column: span 3;
+  width: 100%;
+  text-align: center;
+}
+
+.owl-css {
+  position: relative;
+  width: 100px;
+  height: 110px;
+  background: var(--primary-color, #0A3B2A);
+  border-radius: 50px 50px 40px 40px;
+  margin: 0 auto 18px;
+  box-shadow: 0 8px 16px rgba(10,59,42,0.15);
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.owl-ears {
+  position: absolute;
+  top: -8px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+.owl-ear {
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 20px solid var(--primary-color, #0A3B2A);
+  transform: rotate(-15deg);
+}
+
+.owl-ear.right {
+  transform: rotate(15deg);
+}
+
+.owl-face {
+  position: absolute;
+  top: 15px;
+  left: 10px;
+  width: 80px;
+  height: 45px;
+  background: #ffffff;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+  box-sizing: border-box;
+}
+
+.owl-eyes-wrap {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.owl-eye-css {
+  width: 32px;
+  height: 32px;
+  background: #FACC15;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: blink-eye 4s infinite;
+}
+
+.owl-pupil {
+  width: 14px;
+  height: 14px;
+  background: var(--primary-color, #0A3B2A);
+  border-radius: 50%;
+  position: relative;
+  animation: look-around 5s infinite;
+}
+
+.owl-pupil::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 4px;
+  height: 4px;
+  background: #ffffff;
+  border-radius: 50%;
+}
+
+.owl-beak-css {
+  position: absolute;
+  top: 40px;
+  left: 45px;
+  width: 10px;
+  height: 14px;
+  background: #F59E0B;
+  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  z-index: 10;
+}
+
+.owl-chest-css {
+  position: absolute;
+  bottom: 12px;
+  left: 20px;
+  width: 60px;
+  height: 35px;
+  background: #14532D;
+  border-radius: 30px 30px 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.owl-feather {
+  width: 12px;
+  height: 6px;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  margin-top: 2px;
+}
+
+.owl-wings-wrap {
+  position: absolute;
+  top: 35px;
+  left: -6px;
+  width: 112px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.owl-wing-css {
+  width: 15px;
+  height: 50px;
+  background: #042F1A;
+  border-radius: 10px 0 10px 10px;
+  transform: rotate(10deg);
+  animation: flap-wing-l 3s ease-in-out infinite;
+}
+
+.owl-wing-css.right {
+  border-radius: 0 10px 10px 10px;
+  transform: rotate(-10deg);
+  animation: flap-wing-r 3s ease-in-out infinite;
+}
+
+.owl-feet-css {
+  position: absolute;
+  bottom: -6px;
+  left: 25px;
+  width: 50px;
+  display: flex;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.owl-foot-css {
+  width: 14px;
+  height: 10px;
+  background: #F59E0B;
+  border-radius: 6px 6px 0 0;
+}
+
+/* Animations */
+@keyframes breathe {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.02) translateY(-4px); }
+}
+
+@keyframes blink-eye {
+  0%, 96%, 100% { transform: scaleY(1); }
+  98% { transform: scaleY(0); }
+}
+
+@keyframes look-around {
+  0%, 100% { transform: translate(0, 0); }
+  20%, 40% { transform: translate(-3px, 1px); }
+  60%, 80% { transform: translate(3px, -1px); }
+}
+
+@keyframes flap-wing-l {
+  0%, 100% { transform: rotate(10deg); }
+  50% { transform: rotate(15deg); }
+}
+
+@keyframes flap-wing-r {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(-15deg); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 

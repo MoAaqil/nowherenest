@@ -106,12 +106,28 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Checkout date must be after check-in date' });
     }
 
-    // Check if dates are blocked
+    // Check if dates are explicitly blocked
     const requestedDates = getDatesInRange(start, end);
     const roomBlockedDatesStr = room.blockedDates.map(d => new Date(d).toDateString());
     const isDateBlocked = requestedDates.some(d => roomBlockedDatesStr.includes(d.toDateString()));
     if (isDateBlocked) {
       return res.status(400).json({ success: false, message: 'Selected room is not available for the requested dates' });
+    }
+
+    // Check strict real-time inventory capacity to prevent double bookings
+    const activeBookings = await Booking.countDocuments({
+      room: room._id,
+      status: { $in: ['confirmed', 'checked_in'] },
+      startDate: { $lt: end },
+      endDate: { $gt: start }
+    });
+    
+    const totalInventory = room.totalInventory || 1;
+    const maintenanceBlocks = room.maintenanceBlocks || 0;
+    const availableRooms = Math.max(0, totalInventory - activeBookings - maintenanceBlocks);
+
+    if (availableRooms < 1) {
+      return res.status(400).json({ success: false, message: 'This room is currently sold out for the selected dates.' });
     }
 
     // 3. Financial calculations
@@ -127,6 +143,17 @@ exports.createBooking = async (req, res) => {
 
     let baseAmount = room.price * days;
     let discountApplied = 0;
+
+    // Apply Nest Partner Program Discount (10% for Grand/Prestige/Royal users)
+    const customer = await User.findById(req.user.id);
+    const host = await User.findById(property.owner);
+    let isNestPartnerDiscountApplied = false;
+    
+    if (customer && customer.owlsPoints >= 250 && host && host.nestPartner) {
+      const npDiscount = Math.round(baseAmount * 0.10);
+      discountApplied += npDiscount;
+      isNestPartnerDiscountApplied = true;
+    }
 
     // Apply Coupon Code
     if (couponCode) {
@@ -186,28 +213,63 @@ exports.createBooking = async (req, res) => {
       ownerAmount,
       checkInOTP,
       status: 'confirmed',
-      paymentStatus: 'paid',
+      paymentStatus: 'unpaid', // Will be updated by Razorpay Webhook
       noteToOwner: noteToOwner || '',
       guests: guests || [],
       bookingType: bookingType || 'nightly',
-      durationHours: bookingType === 'hourly' ? (durationHours || null) : null
+      durationHours: bookingType === 'hourly' ? (durationHours || null) : null,
+      selectedUsps: Array.isArray(selectedUsps) ? selectedUsps.map(u => ({
+        title: u.title,
+        description: u.description || '',
+        price: parseFloat(u.price) || 0,
+        chargeType: u.chargeType || 'per_family',
+        scheduledDate: null,
+        status: 'pending'
+      })) : []
     });
 
-    // 5. Block the dates in Room model
+    // 5. Block the dates in Room model (Keep this synchronous to prevent double booking immediately)
     room.blockedDates.push(...requestedDates);
     await room.save();
 
-    // 6. Credit Owner Wallet
-    const owner = await User.findById(property.owner);
-    if (owner) {
-      owner.walletBalance += ownerAmount;
-      await owner.save();
+    // 6. Generate Razorpay Order
+    let razorpayOrderId = null;
+    if (process.env.RAZORPAY_KEY_ID) {
+      const Razorpay = require('razorpay');
+      const rzp = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+      });
+      try {
+        const order = await rzp.orders.create({
+          amount: totalAmount * 100, // paise
+          currency: 'INR',
+          receipt: booking._id.toString()
+        });
+        razorpayOrderId = order.id;
+      } catch (err) {
+        console.error('Razorpay Order Creation Failed:', err);
+      }
+    } else {
+      // Mock order ID for local dev
+      razorpayOrderId = 'order_mock_' + Math.floor(Math.random() * 100000);
     }
+
+    // Award Owls Points to customer (25 points per ₹1000 spent)
+    if (customer) {
+      const earnedPoints = Math.floor(totalAmount / 1000) * 25;
+      customer.owlsPoints = (customer.owlsPoints || 0) + earnedPoints;
+      await customer.save();
+    }
+
+    // Do NOT credit owner wallet until webhook verifies payment
+    // Owner wallet credit moved to paymentController.js webhook
 
     res.status(201).json({
       success: true,
       message: 'Booking created successfully',
-      booking
+      booking,
+      razorpayOrderId
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -222,7 +284,26 @@ exports.getBookings = async (req, res) => {
       .populate('room')
       .sort('-createdAt');
 
-    res.status(200).json({ success: true, count: bookings.length, bookings });
+    const now = new Date();
+    let updated = false;
+    for (let b of bookings) {
+      if (['confirmed', 'checked_in'].includes(b.status) && now > new Date(b.endDate)) {
+        b.status = 'checked_out';
+        b.checkedOutAt = b.endDate;
+        await b.save();
+        updated = true;
+      }
+    }
+
+    let finalBookings = bookings;
+    if (updated) {
+      finalBookings = await Booking.find({ customer: req.user.id })
+        .populate('property')
+        .populate('room')
+        .sort('-createdAt');
+    }
+
+    res.status(200).json({ success: true, count: finalBookings.length, bookings: finalBookings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -339,8 +420,9 @@ exports.checkOutBooking = async (req, res) => {
       role: { $in: ['manager', 'receptionist'] },
       status: 'active'
     });
+    const isCustomer = booking.customer.toString() === req.user.id;
 
-    if (!isOwner && !isAuthorizedStaff && req.user.role !== 'admin') {
+    if (!isOwner && !isAuthorizedStaff && !isCustomer && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Not authorized to perform check-out operations' });
     }
 
@@ -403,6 +485,220 @@ exports.submitReview = async (req, res) => {
     }
 
     res.status(200).json({ success: true, message: 'Review submitted successfully', booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Extend Booking Stay by custom days and experiences
+exports.extendBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('room');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Only customer who booked or owner/admin can extend
+    if (booking.customer.toString() !== req.user.id && req.user.role !== 'owner' && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized stay extension request' });
+    }
+
+    const { days = 1, selectedUsps = [] } = req.body;
+    const daysNum = parseInt(days) || 1;
+
+    // 1. Calculate new dates to block and validate availability
+    const oldEnd = new Date(booking.endDate);
+    const newEnd = new Date(booking.endDate);
+    newEnd.setDate(newEnd.getDate() + daysNum);
+
+    const newBlockedDates = [];
+    let dCurr = new Date(oldEnd);
+    dCurr.setDate(dCurr.getDate() + 1);
+    while (dCurr <= newEnd) {
+      newBlockedDates.push(new Date(dCurr));
+      dCurr.setDate(dCurr.getDate() + 1);
+    }
+
+    if (booking.room) {
+      const roomBlockedDatesStr = booking.room.blockedDates.map(d => new Date(d).toDateString());
+      const isDateBlocked = newBlockedDates.some(d => roomBlockedDatesStr.includes(d.toDateString()));
+      if (isDateBlocked) {
+        return res.status(400).json({ success: false, message: 'The stay cannot be extended because the subsequent dates are already booked.' });
+      }
+    }
+
+    // Update checkout date
+    booking.endDate = newEnd;
+
+    // 2. Room extension cost
+    const dailyPrice = booking.room ? booking.room.price : 0;
+    const roomExtensionCost = daysNum * dailyPrice;
+    booking.baseAmount += roomExtensionCost;
+
+    // 3. Experiences (HDS) cost calculation
+    let uspsAmount = 0;
+    const guestsCount = (Array.isArray(booking.guests) && booking.guests.length > 0) ? booking.guests.length : 1;
+    
+    const property = await Property.findById(booking.property);
+    
+    const formattedNewUsps = selectedUsps.map(u => {
+      const matchedPropertyUsp = property?.usps?.find(pu => pu.title === u.title);
+      const priceVal = matchedPropertyUsp ? matchedPropertyUsp.price : (parseFloat(u.price) || 0);
+      const chargeType = matchedPropertyUsp ? matchedPropertyUsp.chargeType : (u.chargeType || 'per_family');
+      
+      let finalCost = priceVal;
+      if (chargeType === 'per_person') {
+        finalCost = priceVal * guestsCount;
+      }
+      
+      uspsAmount += finalCost;
+      
+      return {
+        title: u.title,
+        description: matchedPropertyUsp?.description || u.description || '',
+        price: priceVal,
+        chargeType: chargeType,
+        scheduledDate: null,
+        status: 'pending'
+      };
+    });
+
+    booking.uspsAmount += uspsAmount;
+    
+    const totalAdded = roomExtensionCost + uspsAmount;
+    booking.totalAmount += totalAdded;
+
+    // 4. Recalculate platforms fee split
+    const rateEnv = parseFloat(process.env.COMMISSION_RATE) || 0.08;
+    const commissionRate = Math.min(Math.max(rateEnv, 0.05), 0.12);
+    
+    const newCommissionAmount = Math.round(booking.totalAmount * commissionRate);
+    const addedCommission = newCommissionAmount - booking.commissionAmount;
+    
+    booking.commissionAmount = newCommissionAmount;
+    booking.ownerAmount = booking.totalAmount - booking.commissionAmount;
+
+    // Append new experiences
+    if (formattedNewUsps.length > 0) {
+      booking.selectedUsps.push(...formattedNewUsps);
+    }
+
+    // Block new dates in Room model
+    if (booking.room) {
+      booking.room.blockedDates.push(...newBlockedDates);
+      await booking.room.save();
+    }
+
+    // 5. Credit Owner Wallet with added owner share
+    const addedOwnerAmount = totalAdded - addedCommission;
+    if (property && property.owner) {
+      const owner = await User.findById(property.owner);
+      if (owner) {
+        owner.walletBalance += addedOwnerAmount;
+        await owner.save();
+      }
+    }
+
+    await booking.save();
+    res.status(200).json({ success: true, message: `Stay extended by ${daysNum} day${daysNum !== 1 ? 's' : ''} successfully!`, booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update Booking experience details (schedule/status)
+exports.updateBookingUsp = async (req, res) => {
+  try {
+    const { scheduledDate, status } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Only host, staff, or admin can schedule experiences
+    if (req.user.role !== 'owner' && req.user.role !== 'admin' && req.user.role !== 'staff') {
+      return res.status(403).json({ success: false, message: 'Only host administrators can schedule experiences' });
+    }
+
+    const usp = booking.selectedUsps.id(req.params.uspId);
+    if (!usp) {
+      return res.status(404).json({ success: false, message: 'Experience not found on this booking' });
+    }
+
+    if (scheduledDate) {
+      usp.scheduledDate = new Date(scheduledDate);
+    }
+    if (status) {
+      usp.status = status;
+    }
+
+    await booking.save();
+    res.status(200).json({ success: true, message: 'Experience tracking updated successfully', booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Cancel a Booking (by customer only, if status is 'confirmed')
+exports.cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('room').populate('property');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Only the customer who booked can cancel
+    if (booking.customer.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Only the booking customer can cancel this reservation' });
+    }
+
+    // Can only cancel if still 'confirmed' (not checked_in, checked_out, or already cancelled)
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ success: false, message: `Booking cannot be cancelled because its status is '${booking.status}'. Only confirmed bookings can be cancelled.` });
+    }
+
+    // 1. Unblock dates from the Room
+    if (booking.room && booking.room.blockedDates) {
+      const bookingDatesStr = new Set();
+      let curr = new Date(booking.startDate);
+      const end = new Date(booking.endDate);
+      while (curr <= end) {
+        bookingDatesStr.add(curr.toDateString());
+        curr.setDate(curr.getDate() + 1);
+      }
+      booking.room.blockedDates = booking.room.blockedDates.filter(
+        d => !bookingDatesStr.has(new Date(d).toDateString())
+      );
+      await booking.room.save();
+    }
+
+    // 2. Debit owner wallet (reverse the credit)
+    if (booking.property && booking.property.owner) {
+      const owner = await User.findById(booking.property.owner);
+      if (owner) {
+        owner.walletBalance = Math.max(0, (owner.walletBalance || 0) - booking.ownerAmount);
+        await owner.save();
+      }
+    }
+
+    // 3. Deduct Owls Points from customer
+    const customer = await User.findById(booking.customer);
+    if (customer) {
+      const earnedPoints = Math.floor(booking.totalAmount / 1000) * 25;
+      customer.owlsPoints = Math.max(0, (customer.owlsPoints || 0) - earnedPoints);
+      await customer.save();
+    }
+
+    // 4. Update booking status
+    booking.status = 'cancelled';
+    booking.paymentStatus = 'refunded';
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking cancelled and refund initiated successfully.',
+      booking
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

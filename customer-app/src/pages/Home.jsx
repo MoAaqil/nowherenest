@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { Search, MapPin, Star, Flame, Compass, ShieldAlert, Navigation, SlidersHorizontal, X } from 'lucide-react';
+import { Search, MapPin, Star, Flame, Compass, ShieldAlert, Navigation, SlidersHorizontal, X, RefreshCw, Mountain, Umbrella, Building, Home as HomeIcon, Map } from 'lucide-react';
 import LeafletMap from '../components/LeafletMap';
 import './Home.css';
 import { formatPrice } from '../utils/currency';
@@ -160,6 +160,7 @@ const Home = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('cottage');
+  const [selectedLandscapeCategory, setSelectedLandscapeCategory] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -183,8 +184,26 @@ const Home = () => {
   const [filterCity, setFilterCity] = useState('');
   const [selectedBedrooms, setSelectedBedrooms] = useState('any');
   const [onlyVerifiedHosts, setOnlyVerifiedHosts] = useState(false);
-  const [minReviewScore, setMinReviewScore] = useState(0);
   const [quickBudget, setQuickBudget] = useState('');
+
+  // Draft States for filter panel (to prevent instant reloading/flickering)
+  const [draftMinPrice, setDraftMinPrice] = useState('');
+  const [draftMaxPrice, setDraftMaxPrice] = useState('');
+  const [draftQuickBudget, setDraftQuickBudget] = useState('');
+  const [draftSelectedAmenities, setDraftSelectedAmenities] = useState([]);
+  const [draftMinRating, setDraftMinRating] = useState(0);
+  const [draftSelectedPropertyTypes, setDraftSelectedPropertyTypes] = useState([]);
+  const [draftSelectedActivities, setDraftSelectedActivities] = useState([]);
+  const [draftSelectedPaymentOptions, setDraftSelectedPaymentOptions] = useState([]);
+  const [draftSelectedRoomOffers, setDraftSelectedRoomOffers] = useState([]);
+  const [draftSelectedNeighborhoods, setDraftSelectedNeighborhoods] = useState([]);
+  const [draftSelectedBedrooms, setDraftSelectedBedrooms] = useState('any');
+  const [draftOnlyVerifiedHosts, setDraftOnlyVerifiedHosts] = useState(false);
+  const [draftFilterState, setDraftFilterState] = useState('');
+  const [draftFilterDistrict, setDraftFilterDistrict] = useState('');
+  const [draftFilterCity, setDraftFilterCity] = useState('');
+
+  // Highlight banner removed as per user request
 
   // GPS range slider
   const [gpsRange, setGpsRange] = useState(() => {
@@ -238,6 +257,67 @@ const Home = () => {
   const userLat = parseFloat(localStorage.getItem('user_lat')) || 9.5930;
   const userLng = parseFloat(localStorage.getItem('user_lng')) || 76.4230;
 
+  // ── Search Autocomplete ──
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchWrapperRef = useRef(null);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const generateSuggestions = (query) => {
+    if (!query || query.length < 2) return [];
+    const q = query.toLowerCase();
+    const results = [];
+    for (const [state, districts] of Object.entries(LOCATION_DATA)) {
+      if (state.toLowerCase().includes(q) && results.length < 6) {
+        results.push({ label: state, sublabel: 'State', icon: '📍', query: state });
+      }
+      for (const [district, areas] of Object.entries(districts)) {
+        if (district.toLowerCase().includes(q) && results.length < 6) {
+          results.push({ label: district, sublabel: state, icon: '🏙️', query: district });
+        }
+        for (const area of areas) {
+          if (area.toLowerCase().includes(q) && results.length < 6) {
+            results.push({ label: area, sublabel: `${district}, ${state}`, icon: '📌', query: area });
+          }
+        }
+      }
+    }
+    return results.slice(0, 6);
+  };
+
+  const handleSearchInputChange = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    if (val.length >= 2) {
+      const s = generateSuggestions(val);
+      setSuggestions(s);
+      setShowSuggestions(s.length > 0);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+    if (!val.trim()) {
+      fetchStays('', selectedCategory, gpsRange);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setSearchQuery(suggestion.query);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    fetchStays(suggestion.query, selectedCategory, gpsRange);
+  };
+
   const [activeSite, setActiveSite] = useState(TOURIST_SITES[0]);
 
   // ── Count active filters for badge ──
@@ -246,7 +326,6 @@ const Home = () => {
     ...selectedAmenities, ...selectedPropertyTypes, ...selectedActivities,
     ...selectedPaymentOptions, ...selectedRoomOffers, ...selectedNeighborhoods,
     minRating > 0 ? 'rating' : null,
-    minReviewScore > 0 ? 'review' : null,
     selectedBedrooms !== 'any' ? 'bedrooms' : null,
     onlyVerifiedHosts ? 'verified' : null,
   ].filter(Boolean).length;
@@ -267,7 +346,64 @@ const Home = () => {
     setFilterCity('');
     setSelectedBedrooms('any');
     setOnlyVerifiedHosts(false);
-    setMinReviewScore(0);
+  };
+
+  // Sync active filters to draft filters when drawer opens
+  useEffect(() => {
+    if (showFilters) {
+      setDraftMinPrice(minPrice);
+      setDraftMaxPrice(maxPrice);
+      setDraftQuickBudget(quickBudget);
+      setDraftSelectedAmenities([...selectedAmenities]);
+      setDraftMinRating(minRating);
+      setDraftSelectedPropertyTypes([...selectedPropertyTypes]);
+      setDraftSelectedActivities([...selectedActivities]);
+      setDraftSelectedPaymentOptions([...selectedPaymentOptions]);
+      setDraftSelectedRoomOffers([...selectedRoomOffers]);
+      setDraftSelectedNeighborhoods([...selectedNeighborhoods]);
+      setDraftSelectedBedrooms(selectedBedrooms);
+      setDraftOnlyVerifiedHosts(onlyVerifiedHosts);
+      setDraftFilterState(filterState);
+      setDraftFilterDistrict(filterDistrict);
+      setDraftFilterCity(filterCity);
+    }
+  }, [showFilters]);
+
+  const applyDraftFilters = () => {
+    setMinPrice(draftMinPrice);
+    setMaxPrice(draftMaxPrice);
+    setQuickBudget(draftQuickBudget);
+    setSelectedAmenities(draftSelectedAmenities);
+    setMinRating(draftMinRating);
+    setSelectedPropertyTypes(draftSelectedPropertyTypes);
+    setSelectedActivities(draftSelectedActivities);
+    setSelectedPaymentOptions(draftSelectedPaymentOptions);
+    setSelectedRoomOffers(draftSelectedRoomOffers);
+    setSelectedNeighborhoods(draftSelectedNeighborhoods);
+    setSelectedBedrooms(draftSelectedBedrooms);
+    setOnlyVerifiedHosts(draftOnlyVerifiedHosts);
+    setFilterState(draftFilterState);
+    setFilterDistrict(draftFilterDistrict);
+    setFilterCity(draftFilterCity);
+    setShowFilters(false);
+  };
+
+  const clearAllDraftFilters = () => {
+    setDraftMinPrice('');
+    setDraftMaxPrice('');
+    setDraftQuickBudget('');
+    setDraftSelectedAmenities([]);
+    setDraftMinRating(0);
+    setDraftSelectedPropertyTypes([]);
+    setDraftSelectedActivities([]);
+    setDraftSelectedPaymentOptions([]);
+    setDraftSelectedRoomOffers([]);
+    setDraftSelectedNeighborhoods([]);
+    setDraftFilterState('');
+    setDraftFilterDistrict('');
+    setDraftFilterCity('');
+    setDraftSelectedBedrooms('any');
+    setDraftOnlyVerifiedHosts(false);
   };
 
   // ── Trigger refetch when any filter changes ──
@@ -278,36 +414,30 @@ const Home = () => {
     selectedCategory, currencyChanged, gpsRange, sortBy,
     minPrice, maxPrice, quickBudget, selectedAmenities, minRating,
     selectedPropertyTypes, selectedActivities, selectedPaymentOptions, selectedRoomOffers,
-    selectedNeighborhoods, selectedBedrooms, onlyVerifiedHosts, minReviewScore,
+    selectedNeighborhoods, selectedBedrooms, onlyVerifiedHosts,
   ]);
 
-  const fetchStays = async (queryVal = searchQuery, catVal = selectedCategory, rangeVal = gpsRange) => {
+  const fetchStays = async (queryVal = searchQuery, catVal = selectedCategory, rangeVal = gpsRange, landscapeVal = selectedLandscapeCategory) => {
     setLoading(true);
     setIsSearching(true);
     setError(null);
-
-    const steps = language === 'Tamil' ? [
-      'GPS அலகுகளை அணுகுகிறது...', 'அருகிலுள்ள தங்குமிடங்களின் தூரத்தை கணக்கிடுகிறது...',
-      'உள்ளூர் தங்குமிடங்களை தேடுகிறது...', 'கட்டண விவரங்களை சரிபார்க்கிறது...',
-    ] : [
-      'Accessing GPS coordinates...', 'Checking stay availability proximity...',
-      'Querying active local inventory...', 'Verifying brokerage-free host pricing...',
-    ];
-
-    setSearchStepText(steps[0]);
-    setTimeout(() => setSearchStepText(steps[1]), 350);
-    setTimeout(() => setSearchStepText(steps[2]), 700);
-    setTimeout(() => setSearchStepText(steps[3]), 1050);
 
     try {
       const isSearchActive = !!queryVal.trim();
       const res = await api.listings.getAll({
         type: 'stay',
         category: isSearchActive ? '' : catVal,
+        landscapeCategory: isSearchActive ? '' : landscapeVal,
         search: isSearchActive ? queryVal : '',
+        lat: gpsEnabled ? userLat : undefined,
+        lng: gpsEnabled ? userLng : undefined,
+        radius: gpsEnabled ? rangeVal : undefined
       });
 
       let stays = res.listings || [];
+
+      // ── Temporarily hide PG / guesthouse rooms from customer app ──
+      stays = stays.filter(s => s.category !== 'pg');
 
       // ── Price filters ──
       if (minPrice) stays = stays.filter(s => s.price >= parseFloat(minPrice));
@@ -326,13 +456,7 @@ const Home = () => {
       }
 
       // ── Star rating ──
-      if (minRating > 0) stays = stays.filter(s => (s.starRating || 4.5) >= minRating);
-
-      // ── Guest review score (10-scale mapped to 5-star) ──
-      if (minReviewScore > 0) {
-        const minStars = minReviewScore / 2;
-        stays = stays.filter(s => (s.starRating || 4.5) >= minStars);
-      }
+      if (minRating > 0) stays = stays.filter(s => (s.starRating || 3) >= minRating);
 
       // ── Property type ──
       if (selectedPropertyTypes.length > 0) {
@@ -432,15 +556,13 @@ const Home = () => {
         if (d < minDist) { minDist = d; closestSite = site; }
       });
 
-      setTimeout(() => {
-        setListings(stays);
-        setActiveSite(closestSite);
-        if (stays.length > 0 && stays[0].location) {
-          setMapCenter([stays[0].location.lat, stays[0].location.lng]);
-        }
-        setIsSearching(false);
-        setLoading(false);
-      }, 1300);
+      setListings(stays);
+      setActiveSite(closestSite);
+      if (stays.length > 0 && stays[0].location) {
+        setMapCenter([stays[0].location.lat, stays[0].location.lng]);
+      }
+      setIsSearching(false);
+      setLoading(false);
     } catch (err) {
       setError(err.message || 'Failed to load accommodations');
       setIsSearching(false);
@@ -463,7 +585,6 @@ const Home = () => {
             ...usp,
             propertyId: listing._id,
             propertyName: listing.title,
-            hostName: listing.owner?.name || 'Local Host',
             image: (
               usp.title.toLowerCase().includes('trek') || usp.title.toLowerCase().includes('hike') || usp.title.toLowerCase().includes('walk')
                 ? 'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=500&q=80'
@@ -484,362 +605,343 @@ const Home = () => {
   const toggleItem = (setter, id) =>
     setter(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
-  // ─── Filter Drawer ─────────────────────────────────────────────────────────
-  const FilterDrawer = () => (
-    <>
-      {/* Backdrop */}
-      <div className="filter-drawer-backdrop" onClick={() => setShowFilters(false)} />
-
-      {/* Panel */}
-      <div className="filter-drawer-panel">
-        {/* Header */}
-        <div className="filter-drawer-header">
-          <div>
-            <h4 className="filter-drawer-title">All Filters</h4>
-            {activeFiltersCount > 0 && (
-              <span className="filter-active-count">{activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''} active</span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            {activeFiltersCount > 0 && (
-              <button onClick={clearAllFilters} className="filter-clear-btn">Clear All</button>
-            )}
-            <button onClick={() => setShowFilters(false)} className="filter-close-btn">
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="filter-drawer-body">
-
-          {/* ── Guest Review Score ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">⭐ Guest Review Score</span>
-            <div className="filter-pill-row">
-              {[
-                { val: 0, label: 'Any' },
-                { val: 6, label: '6+ Good' },
-                { val: 7, label: '7+ Very Good' },
-                { val: 8, label: '8+ Excellent' },
-                { val: 9, label: '9+ Wonderful' },
-              ].map(opt => (
-                <button
-                  key={opt.val}
-                  onClick={() => setMinReviewScore(opt.val)}
-                  className={`filter-pill ${minReviewScore === opt.val ? 'active' : ''}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Star Rating ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">🌟 Star Rating</span>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button onClick={() => setMinRating(0)} className={`filter-pill ${minRating === 0 ? 'active' : ''}`}>Any</button>
-              {[1, 2, 3, 4, 5].map(s => (
-                <button
-                  key={s}
-                  onClick={() => setMinRating(s === minRating ? 0 : s)}
-                  className={`filter-star-btn ${minRating > 0 && minRating <= s ? 'active' : minRating === s ? 'active' : ''}`}
-                  style={{ color: minRating > 0 && minRating <= s ? '#D97706' : '' }}
-                >
-                  {'★'.repeat(s)}{s < 5 ? '+' : ''}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Budget ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">💰 Budget (per night)</span>
-            <div className="filter-pill-row" style={{ marginBottom: '12px' }}>
-              {[
-                { id: 'under2k', label: 'Under ₹2K' },
-                { id: '2k5k', label: '₹2K – ₹5K' },
-                { id: '5k10k', label: '₹5K – ₹10K' },
-                { id: 'above10k', label: '₹10K+' },
-              ].map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => { setQuickBudget(prev => prev === opt.id ? '' : opt.id); setMinPrice(''); setMaxPrice(''); }}
-                  className={`filter-pill ${quickBudget === opt.id ? 'active' : ''}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <div className="filter-range-row">
-              <input
-                type="number"
-                placeholder="Min ₹"
-                value={minPrice}
-                onChange={e => { setMinPrice(e.target.value); setQuickBudget(''); }}
-                className="filter-range-input"
-              />
-              <span className="filter-range-sep">—</span>
-              <input
-                type="number"
-                placeholder="Max ₹"
-                value={maxPrice}
-                onChange={e => { setMaxPrice(e.target.value); setQuickBudget(''); }}
-                className="filter-range-input"
-              />
-            </div>
-          </div>
-
-          {/* ── Property Type ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">🏘️ Property Type</span>
-            <div className="filter-pill-row">
-              {PROPERTY_TYPES.map(pt => (
-                <button
-                  key={pt.id}
-                  onClick={() => toggleItem(setSelectedPropertyTypes, pt.id)}
-                  className={`filter-pill ${selectedPropertyTypes.includes(pt.id) ? 'active' : ''}`}
-                >
-                  {pt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Neighborhoods ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">📍 Neighborhood / Location Helper</span>
-            
-            <div className="location-selectors-grid">
-              {/* State Selector */}
-              <div className="location-select-wrapper">
-                <label style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-light)', display: 'block', marginBottom: '4px' }}>STATE</label>
-                <select 
-                  value={filterState} 
-                  onChange={e => {
-                    const val = e.target.value;
-                    setFilterState(val);
-                    setFilterDistrict('');
-                    setFilterCity('');
-                    if (val) {
-                      if (!selectedNeighborhoods.includes(val)) {
-                        setSelectedNeighborhoods(prev => [...prev, val]);
-                      }
-                    }
-                  }}
-                  className="location-select"
-                >
-                  <option value="">Select State</option>
-                  {Object.keys(LOCATION_DATA).map(state => (
-                    <option key={state} value={state}>{state}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* District Selector */}
-              <div className="location-select-wrapper">
-                <label style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-light)', display: 'block', marginBottom: '4px' }}>DISTRICT</label>
-                <select 
-                  value={filterDistrict} 
-                  onChange={e => {
-                    const val = e.target.value;
-                    setFilterDistrict(val);
-                    setFilterCity('');
-                    if (val) {
-                      if (!selectedNeighborhoods.includes(val)) {
-                        setSelectedNeighborhoods(prev => [...prev, val]);
-                      }
-                    }
-                  }}
-                  disabled={!filterState}
-                  className="location-select"
-                >
-                  <option value="">Select District</option>
-                  {filterState && Object.keys(LOCATION_DATA[filterState]).map(dist => (
-                    <option key={dist} value={dist}>{dist}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* City/Area Selector */}
-              <div className="location-select-wrapper">
-                <label style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-light)', display: 'block', marginBottom: '4px' }}>CITY / AREA</label>
-                <select 
-                  value={filterCity} 
-                  onChange={e => {
-                    const val = e.target.value;
-                    setFilterCity(val);
-                    if (val) {
-                      if (!selectedNeighborhoods.includes(val)) {
-                        setSelectedNeighborhoods(prev => [...prev, val]);
-                      }
-                    }
-                  }}
-                  disabled={!filterDistrict}
-                  className="location-select"
-                >
-                  <option value="">Select City</option>
-                  {filterState && filterDistrict && LOCATION_DATA[filterState][filterDistrict].map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Active Selections display */}
-            {selectedNeighborhoods.length > 0 && (
-              <div className="active-locations-row">
-                {selectedNeighborhoods.map(n => (
-                  <span key={n} className="location-badge">
-                    📍 {n}
-                    <button 
-                      type="button" 
-                      onClick={() => setSelectedNeighborhoods(prev => prev.filter(item => item !== n))}
-                      className="location-badge-close"
-                      aria-label="Remove location"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ── Bedrooms ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">🛏️ Bedrooms / Layout</span>
-            <div className="filter-pill-row">
-              {[
-                { id: 'any', label: 'Any' },
-                { id: '1', label: '1 BHK' },
-                { id: '2', label: '2 BHK' },
-                { id: '3', label: '3+ BHK' },
-              ].map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setSelectedBedrooms(opt.id)}
-                  className={`filter-pill ${selectedBedrooms === opt.id ? 'active' : ''}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Room Offers ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">🏷️ Room Offers</span>
-            <div className="filter-pill-row">
-              {ROOM_OFFER_OPTIONS.map(r => (
-                <button
-                  key={r.id}
-                  onClick={() => toggleItem(setSelectedRoomOffers, r.id)}
-                  className={`filter-pill ${selectedRoomOffers.includes(r.id) ? 'active' : ''}`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Facilities ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">🛁 Facilities &amp; Amenities</span>
-            <div className="filter-facilities-grid">
-              {FACILITIES_LIST.map(f => (
-                <label
-                  key={f.id}
-                  className={`filter-facility-item ${selectedAmenities.includes(f.id) ? 'active' : ''}`}
-                  onClick={() => toggleItem(setSelectedAmenities, f.id)}
-                >
-                  <span className="facility-check-box">
-                    {selectedAmenities.includes(f.id) ? '✓' : ''}
-                  </span>
-                  {f.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Special Activities ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">🎯 Special Experiences</span>
-            <div className="filter-pill-row">
-              {ACTIVITY_OPTIONS.map(a => (
-                <button
-                  key={a.id}
-                  onClick={() => toggleItem(setSelectedActivities, a.id)}
-                  className={`filter-pill ${selectedActivities.includes(a.id) ? 'active' : ''}`}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Payment Options ── */}
-          <div className="filter-section">
-            <span className="filter-section-label">💳 Payment Options</span>
-            <div className="filter-pill-row">
-              {PAYMENT_OPTIONS.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => toggleItem(setSelectedPaymentOptions, p.id)}
-                  className={`filter-pill ${selectedPaymentOptions.includes(p.id) ? 'active' : ''}`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Verified Host ── */}
-          <div className="filter-section" style={{ borderBottom: 'none' }}>
-            <div className="filter-verified-row">
-              <div>
-                <span className="filter-section-label" style={{ marginBottom: '2px' }}>🛡️ Verified Host (HST Licensed)</span>
-                <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>Show only government-verified &amp; licensed host properties</p>
-              </div>
-              <label className="filter-toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={onlyVerifiedHosts}
-                  onChange={e => setOnlyVerifiedHosts(e.target.checked)}
-                />
-                <span className="toggle-track">
-                  <span className="toggle-thumb" />
-                </span>
-              </label>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Footer */}
-        <div className="filter-drawer-footer">
-          <button
-            onClick={() => {
-              fetchStays(searchQuery, selectedCategory, gpsRange);
-              setShowFilters(false);
-            }}
-            className="filter-apply-btn"
-          >
-            {activeFiltersCount > 0
-              ? `Apply ${activeFiltersCount} Filter${activeFiltersCount !== 1 ? 's' : ''}`
-              : 'Apply Filters'}
-          </button>
-        </div>
-      </div>
-    </>
-  );
+  const draftFiltersCount = [
+    draftMinPrice, draftMaxPrice, draftQuickBudget,
+    ...draftSelectedAmenities, ...draftSelectedPropertyTypes, ...draftSelectedActivities,
+    ...draftSelectedPaymentOptions, ...draftSelectedRoomOffers, ...draftSelectedNeighborhoods,
+    draftMinRating > 0 ? 'rating' : null,
+    draftSelectedBedrooms !== 'any' ? 'bedrooms' : null,
+    draftOnlyVerifiedHosts ? 'verified' : null,
+  ].filter(Boolean).length;
 
   // ─── JSX ──────────────────────────────────────────────────────────────────
   return (
     <div className="home-page container">
       {/* Filter Drawer */}
-      {showFilters && <FilterDrawer />}
+      {showFilters && (
+        <>
+          {/* Backdrop */}
+          <div className="filter-drawer-backdrop" onClick={() => setShowFilters(false)} />
+
+          {/* Panel */}
+          <div className="filter-drawer-panel">
+            {/* Header */}
+            <div className="filter-drawer-header">
+              <div>
+                <h4 className="filter-drawer-title">All Filters</h4>
+                {draftFiltersCount > 0 && (
+                  <span className="filter-active-count">{draftFiltersCount} filter{draftFiltersCount !== 1 ? 's' : ''} active</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                {draftFiltersCount > 0 && (
+                  <button onClick={clearAllDraftFilters} className="filter-clear-btn">Clear All</button>
+                )}
+                <button onClick={() => setShowFilters(false)} className="filter-close-btn">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="filter-drawer-body">
+
+              {/* ── Star Rating ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">🌟 Star Rating</span>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button onClick={() => setDraftMinRating(0)} className={`filter-pill ${draftMinRating === 0 ? 'active' : ''}`}>Any</button>
+                  {[1, 2, 3, 4, 5].map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setDraftMinRating(s === draftMinRating ? 0 : s)}
+                      className={`filter-star-btn ${draftMinRating === s ? 'active' : ''}`}
+                      style={{ color: draftMinRating === s ? '#D97706' : '' }}
+                    >
+                      {'★'.repeat(s)}{s < 5 ? '+' : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Budget ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">💰 Budget (per night)</span>
+                <div className="filter-pill-row" style={{ marginBottom: '12px' }}>
+                  {[
+                    { id: 'under2k', label: 'Under ₹2K' },
+                    { id: '2k5k', label: '₹2K – ₹5K' },
+                    { id: '5k10k', label: '₹5K – ₹10K' },
+                    { id: 'above10k', label: '₹10K+' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => { setDraftQuickBudget(prev => prev === opt.id ? '' : opt.id); setDraftMinPrice(''); setDraftMaxPrice(''); }}
+                      className={`filter-pill ${draftQuickBudget === opt.id ? 'active' : ''}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="filter-range-row">
+                  <input
+                    type="number"
+                    placeholder="Min ₹"
+                    value={draftMinPrice}
+                    onChange={e => { setDraftMinPrice(e.target.value); setDraftQuickBudget(''); }}
+                    className="filter-range-input"
+                  />
+                  <span className="filter-range-sep">—</span>
+                  <input
+                    type="number"
+                    placeholder="Max ₹"
+                    value={draftMaxPrice}
+                    onChange={e => { setDraftMaxPrice(e.target.value); setDraftQuickBudget(''); }}
+                    className="filter-range-input"
+                  />
+                </div>
+              </div>
+
+              {/* ── Property Type ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">🏘️ Property Type</span>
+                <div className="filter-pill-row">
+                  {PROPERTY_TYPES.map(pt => (
+                    <button
+                      key={pt.id}
+                      onClick={() => toggleItem(setDraftSelectedPropertyTypes, pt.id)}
+                      className={`filter-pill ${draftSelectedPropertyTypes.includes(pt.id) ? 'active' : ''}`}
+                    >
+                      {pt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Neighborhoods ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">📍 Neighborhood / Location Helper</span>
+                
+                <div className="location-selectors-grid">
+                  {/* State Selector */}
+                  <div className="location-select-wrapper">
+                    <label style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-light)', display: 'block', marginBottom: '4px' }}>STATE</label>
+                    <select 
+                      value={draftFilterState} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setDraftFilterState(val);
+                        setDraftFilterDistrict('');
+                        setDraftFilterCity('');
+                        if (val) {
+                          if (!draftSelectedNeighborhoods.includes(val)) {
+                            setDraftSelectedNeighborhoods(prev => [...prev, val]);
+                          }
+                        }
+                      }}
+                      className="location-select"
+                    >
+                      <option value="">Select State</option>
+                      {Object.keys(LOCATION_DATA).map(state => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* District Selector */}
+                  <div className="location-select-wrapper">
+                    <label style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-light)', display: 'block', marginBottom: '4px' }}>DISTRICT</label>
+                    <select 
+                      value={draftFilterDistrict} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setDraftFilterDistrict(val);
+                        setDraftFilterCity('');
+                        if (val) {
+                          if (!draftSelectedNeighborhoods.includes(val)) {
+                            setDraftSelectedNeighborhoods(prev => [...prev, val]);
+                          }
+                        }
+                      }}
+                      disabled={!draftFilterState}
+                      className="location-select"
+                    >
+                      <option value="">Select District</option>
+                      {draftFilterState && Object.keys(LOCATION_DATA[draftFilterState]).map(dist => (
+                        <option key={dist} value={dist}>{dist}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* City/Area Selector */}
+                  <div className="location-select-wrapper">
+                    <label style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-light)', display: 'block', marginBottom: '4px' }}>CITY / AREA</label>
+                    <select 
+                      value={draftFilterCity} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setDraftFilterCity(val);
+                        if (val) {
+                          if (!draftSelectedNeighborhoods.includes(val)) {
+                            setDraftSelectedNeighborhoods(prev => [...prev, val]);
+                          }
+                        }
+                      }}
+                      disabled={!draftFilterDistrict}
+                      className="location-select"
+                    >
+                      <option value="">Select City</option>
+                      {draftFilterState && draftFilterDistrict && LOCATION_DATA[draftFilterState][draftFilterDistrict].map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Active Selections display */}
+                {draftSelectedNeighborhoods.length > 0 && (
+                  <div className="active-locations-row">
+                    {draftSelectedNeighborhoods.map(n => (
+                      <span key={n} className="location-badge">
+                        📍 {n}
+                        <button 
+                          type="button" 
+                          onClick={() => setDraftSelectedNeighborhoods(prev => prev.filter(item => item !== n))}
+                          className="location-badge-close"
+                          aria-label="Remove location"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Bedrooms ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">🛏️ Bedrooms / Layout</span>
+                <div className="filter-pill-row">
+                  {[
+                    { id: 'any', label: 'Any' },
+                    { id: '1', label: '1 BHK' },
+                    { id: '2', label: '2 BHK' },
+                    { id: '3', label: '3+ BHK' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setDraftSelectedBedrooms(opt.id)}
+                      className={`filter-pill ${draftSelectedBedrooms === opt.id ? 'active' : ''}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Room Offers ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">🏷️ Room Offers</span>
+                <div className="filter-pill-row">
+                  {ROOM_OFFER_OPTIONS.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => toggleItem(setDraftSelectedRoomOffers, r.id)}
+                      className={`filter-pill ${draftSelectedRoomOffers.includes(r.id) ? 'active' : ''}`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Facilities ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">🛁 Facilities &amp; Amenities</span>
+                <div className="filter-facilities-grid">
+                  {FACILITIES_LIST.map(f => (
+                    <label
+                      key={f.id}
+                      className={`filter-facility-item ${draftSelectedAmenities.includes(f.id) ? 'active' : ''}`}
+                      onClick={() => toggleItem(setDraftSelectedAmenities, f.id)}
+                    >
+                      <span className="facility-check-box">
+                        {draftSelectedAmenities.includes(f.id) ? '✓' : ''}
+                      </span>
+                      {f.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Special Activities ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">🎯 Special Experiences</span>
+                <div className="filter-pill-row">
+                  {ACTIVITY_OPTIONS.map(a => (
+                    <button
+                      key={a.id}
+                      onClick={() => toggleItem(setDraftSelectedActivities, a.id)}
+                      className={`filter-pill ${draftSelectedActivities.includes(a.id) ? 'active' : ''}`}
+                    >
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Payment Options ── */}
+              <div className="filter-section">
+                <span className="filter-section-label">💳 Payment Options</span>
+                <div className="filter-pill-row">
+                  {PAYMENT_OPTIONS.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => toggleItem(setDraftSelectedPaymentOptions, p.id)}
+                      className={`filter-pill ${draftSelectedPaymentOptions.includes(p.id) ? 'active' : ''}`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Verified Host ── */}
+              <div className="filter-section" style={{ borderBottom: 'none' }}>
+                <div className="filter-verified-row">
+                  <div>
+                    <span className="filter-section-label" style={{ marginBottom: '2px' }}>🛡️ Verified Host (HST Licensed)</span>
+                    <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>Show only government-verified &amp; licensed host properties</p>
+                  </div>
+                  <label className="filter-toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={draftOnlyVerifiedHosts}
+                      onChange={e => setDraftOnlyVerifiedHosts(e.target.checked)}
+                    />
+                    <span className="toggle-track">
+                      <span className="toggle-thumb" />
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="filter-drawer-footer">
+              <button
+                onClick={applyDraftFilters}
+                className="filter-apply-btn"
+              >
+                {draftFiltersCount > 0
+                  ? `Apply ${draftFiltersCount} Filter${draftFiltersCount !== 1 ? 's' : ''}`
+                  : 'Apply Filters'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* 1. Header Hero Panel */}
       <section className="home-hero">
@@ -865,15 +967,42 @@ const Home = () => {
             }}
           >
             <div style={{ display: 'flex', gap: '12px', width: '100%', alignItems: 'center' }}>
-              <div className="search-input-wrapper" style={{ flex: 1, margin: 0, border: '1.5px solid var(--border-color)', borderRadius: '12px', background: '#F8FAFC', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="search-input-wrapper" ref={searchWrapperRef} style={{ flex: 1, margin: 0, border: '1.5px solid var(--border-color)', borderRadius: '12px', background: '#F8FAFC', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
                 <Search size={20} className="search-icon" style={{ color: 'var(--primary-color)' }} />
                 <input
                   type="text"
                   placeholder={translate('search_placeholder', language)}
                   value={searchQuery}
-                  onChange={e => { setSearchQuery(e.target.value); fetchStays(e.target.value, selectedCategory, gpsRange); }}
+                  onChange={handleSearchInputChange}
+                  onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                  onKeyDown={e => { if (e.key === 'Enter') { setShowSuggestions(false); fetchStays(searchQuery, selectedCategory, gpsRange); } }}
                   style={{ background: 'transparent', border: 'none', outline: 'none', width: '100%', fontSize: '14px', fontWeight: '600', color: 'var(--text-dark)' }}
                 />
+                {searchQuery && (
+                  <button type="button" onClick={() => { setSearchQuery(''); setSuggestions([]); setShowSuggestions(false); fetchStays('', selectedCategory, gpsRange); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-medium)', display: 'flex', alignItems: 'center', padding: 0 }}>
+                    <X size={14} />
+                  </button>
+                )}
+
+                {/* Suggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="suggestions-dropdown">
+                    {suggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className="suggestion-item"
+                        onMouseDown={() => handleSuggestionClick(s)}
+                      >
+                        <span className="suggestion-icon">{s.icon}</span>
+                        <div className="suggestion-text">
+                          <span className="suggestion-label">{s.label}</span>
+                          <span className="suggestion-sublabel">{s.sublabel}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Filter button with badge */}
@@ -901,6 +1030,36 @@ const Home = () => {
                 {activeFiltersCount > 0 && (
                   <span className="filter-badge-count" style={{ background: 'var(--accent-color)', color: 'var(--primary-color)' }}>{activeFiltersCount}</span>
                 )}
+              </button>
+
+              {/* Refresh/Scan Button */}
+              <button
+                type="button"
+                onClick={() => fetchStays(searchQuery, selectedCategory, gpsRange)}
+                className="filter-trigger-btn"
+                style={{ 
+                  background: '#F8FAFC', 
+                  color: 'var(--primary-color)',
+                  border: '1.5px solid var(--border-color)',
+                  borderRadius: '12px',
+                  width: '46px',
+                  height: '46px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  padding: 0
+                }}
+                title="Search nearby stays"
+              >
+                <RefreshCw 
+                  size={18} 
+                  style={{ 
+                    margin: 'auto',
+                    animation: loading ? 'spin 1.5s linear infinite' : 'none' 
+                  }} 
+                />
               </button>
             </div>
 
@@ -1105,15 +1264,27 @@ const Home = () => {
       <section className="category-selection-section">
         <h3>{translate('find_perfect', language)}</h3>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginTop: '8px' }}>
-          <div className="category-chips flex" style={{ margin: 0 }}>
-            <button className={`chip ${selectedCategory === 'cottage' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('cottage'); }}>
-              {translate('cottages', language)}
+          <div className="category-chips flex" style={{ margin: 0, gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+            <button className={`chip ${selectedCategory === '' && selectedLandscapeCategory === '' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory(''); setSelectedLandscapeCategory(''); fetchStays('', '', gpsRange, ''); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Compass size={14} /> {translate('all_stays', language) || 'All Stays'}
             </button>
-            <button className={`chip ${selectedCategory === 'hotel' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('hotel'); }}>
-              {translate('hotels', language)}
+            <button className={`chip ${selectedCategory === 'cottage' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('cottage'); setSelectedLandscapeCategory(''); fetchStays('', 'cottage', gpsRange, ''); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <HomeIcon size={14} /> {translate('cottages', language)}
             </button>
-            <button className={`chip ${selectedCategory === 'apartment' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('apartment'); }}>
-              {translate('apartments', language)}
+            <button className={`chip ${selectedCategory === 'hotel' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('hotel'); setSelectedLandscapeCategory(''); fetchStays('', 'hotel', gpsRange, ''); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Building size={14} /> {translate('hotels', language)}
+            </button>
+            <button className={`chip ${selectedCategory === 'apartment' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory('apartment'); setSelectedLandscapeCategory(''); fetchStays('', 'apartment', gpsRange, ''); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Building size={14} /> {translate('apartments', language)}
+            </button>
+            <button className={`chip ${selectedLandscapeCategory === 'hillstation' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory(''); setSelectedLandscapeCategory('hillstation'); fetchStays('', '', gpsRange, 'hillstation'); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Mountain size={14} /> Hillstations
+            </button>
+            <button className={`chip ${selectedLandscapeCategory === 'beach' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory(''); setSelectedLandscapeCategory('beach'); fetchStays('', '', gpsRange, 'beach'); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Umbrella size={14} /> Beaches
+            </button>
+            <button className={`chip ${selectedLandscapeCategory === 'city' ? 'active' : ''}`} onClick={() => { setSearchQuery(''); setSelectedCategory(''); setSelectedLandscapeCategory('city'); fetchStays('', '', gpsRange, 'city'); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Map size={14} /> City Centers
             </button>
           </div>
           
@@ -1177,6 +1348,7 @@ const Home = () => {
                     <img
                       src={listing.images[0] || 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80'}
                       alt={listing.title}
+                      referrerPolicy="no-referrer"
                     />
                     <div className="price-tag-pill">{formatPrice(listing.price)}<span>{translate('checkout_night_suffix', language)}</span></div>
                   </div>
@@ -1191,7 +1363,7 @@ const Home = () => {
                       )}
                       <div className="rating-tag">
                         <Star size={14} className="star-icon" />
-                        <span>{listing.starRating || 4.5}</span>
+                        <span>{listing.starRating || 3}</span>
                       </div>
                     </div>
 
@@ -1247,7 +1419,12 @@ const Home = () => {
 
         <div className="experiences-grid grid grid-cols-3" style={{ gap: '20px', marginTop: '20px' }}>
           {displayExperiences.map((exp, idx) => (
-            <div key={idx} className="experience-card card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Link 
+              key={idx} 
+              to={`/listing/${exp.propertyId}`} 
+              className="experience-card card" 
+              style={{ display: 'flex', flexDirection: 'column', height: '100%', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
+            >
               <div className="exp-img" style={{ position: 'relative', overflow: 'hidden', height: '160px' }}>
                 <img src={exp.image} alt={exp.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div className="price-badge" style={{ position: 'absolute', top: '12px', right: '12px', backgroundColor: 'rgba(10, 59, 42, 0.9)', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>
@@ -1258,7 +1435,7 @@ const Home = () => {
                 <div>
                   <h6 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '700', color: 'var(--text-dark)' }}>{exp.title}</h6>
                   <p style={{ margin: '0 0 10px 0', fontSize: '11px', fontWeight: '600', color: 'var(--text-light)' }}>
-                    🏡 Listed by: <Link to={`/listing/${exp.propertyId}`} style={{ color: 'var(--primary-color)', fontWeight: '700', textDecoration: 'underline' }}>{exp.propertyName}</Link>
+                    🏡 Listed by: <span style={{ color: 'var(--primary-color)', fontWeight: '700', textDecoration: 'underline' }}>{exp.propertyName}</span>
                   </p>
                   <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--text-medium)', lineHeight: '1.4' }}>{exp.description}</p>
                 </div>
@@ -1267,11 +1444,43 @@ const Home = () => {
                   <span className="tag-usp" style={{ fontSize: '11px', fontWeight: '700', background: 'var(--primary-light)', color: 'var(--primary-color)', padding: '2px 8px', borderRadius: '20px' }}>✨ Curated</span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
           {displayExperiences.length === 0 && (
-            <div style={{ gridColumn: 'span 3', padding: '40px', textAlign: 'center', color: 'var(--text-light)' }}>
-              No experiences available in this location right now.
+            <div className="empty-owl-container">
+              <div className="owl-css">
+                <div className="owl-ears">
+                  <div className="owl-ear left"></div>
+                  <div className="owl-ear right"></div>
+                </div>
+                <div className="owl-face">
+                  <div className="owl-eyes-wrap">
+                    <div className="owl-eye-css">
+                      <div className="owl-pupil"></div>
+                    </div>
+                    <div className="owl-eye-css">
+                      <div className="owl-pupil"></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="owl-beak-css"></div>
+                <div className="owl-chest-css">
+                  <div className="owl-feather"></div>
+                  <div className="owl-feather"></div>
+                </div>
+                <div className="owl-wings-wrap">
+                  <div className="owl-wing-css left"></div>
+                  <div className="owl-wing-css right"></div>
+                </div>
+                <div className="owl-feet-css">
+                  <div className="owl-foot-css left"></div>
+                  <div className="owl-foot-css right"></div>
+                </div>
+              </div>
+              <h5 style={{ fontWeight: '800', color: 'var(--text-dark)', marginBottom: '6px', fontSize: '16px' }}>No experiences available</h5>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-medium)', fontWeight: '600' }}>
+                No curated stay experiences have been listed by hosts in this area yet.
+              </p>
             </div>
           )}
         </div>

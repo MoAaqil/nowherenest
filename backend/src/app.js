@@ -30,6 +30,9 @@ const housekeepingRoutes = require('./routes/housekeepingRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const vibeRoutes = require('./routes/vibeRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const channelRoutes = require('./routes/channelRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 // Map Routes
 app.use('/api/auth', authRoutes);
@@ -44,6 +47,9 @@ app.use('/api/housekeeping', housekeepingRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/vibes', vibeRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/channel', channelRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Route to resolve Pinterest and Google Drive URLs to raw image URLs
 app.get('/api/utils/resolve-image', async (req, res) => {
@@ -77,15 +83,20 @@ app.get('/api/utils/resolve-image', async (req, res) => {
 
       const html = await response.text();
       
-      const ogImageRegex = /<meta[^>]*(?:property|name)=["']og:image["'][^>]*content=["']([^"']+)["']/i;
-      const ogImageRegexAlt = /<meta[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["']og:image["']/i;
-      const twitterImageRegex = /<meta[^>]*(?:property|name)=["']twitter:image[^"']*["'][^>]*content=["']([^"']+)["']/i;
-      const twitterImageRegexAlt = /<meta[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["']twitter:image[^"']/i;
-      
-      let imageMatch = html.match(ogImageRegex) || html.match(ogImageRegexAlt) || html.match(twitterImageRegex) || html.match(twitterImageRegexAlt);
-      if (imageMatch && imageMatch[1]) {
-        let resolvedUrl = imageMatch[1];
-        resolvedUrl = resolvedUrl.replace(/&amp;/g, '&');
+      const metaTags = html.match(/<meta\s+[^>]+>/gi) || [];
+      let resolvedUrl = null;
+      for (const tag of metaTags) {
+        const isImageMeta = /\b(og:image|twitter:image)\b/i.test(tag);
+        if (isImageMeta) {
+          const contentMatch = tag.match(/content=["']([^"']+)["']/i);
+          if (contentMatch && contentMatch[1]) {
+            resolvedUrl = contentMatch[1].replace(/&amp;/g, '&');
+            break;
+          }
+        }
+      }
+
+      if (resolvedUrl) {
         return res.status(200).json({ success: true, originalUrl: url, resolvedUrl });
       }
     }

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Star, Wifi, Flame, Zap, Calendar, User, Phone, CheckCircle, Car, ArrowLeft, Heart, Tag } from 'lucide-react';
+import { MapPin, Star, Wifi, Flame, Zap, Calendar, User, Phone, CheckCircle, Car, ArrowLeft, Heart, Tag, ChevronLeft, ChevronRight, X, MessageSquare } from 'lucide-react';
 import './DetailView.css';
 import { formatPrice } from '../utils/currency';
 import { translate } from '../utils/translations';
 import DateRangeCalendar from '../components/DateRangeCalendar';
 import LeafletMap from '../components/LeafletMap';
+import { pushNotification } from '../components/Navbar';
 
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '';
@@ -65,6 +66,7 @@ const DetailView = () => {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
   const [couponSuccess, setCouponSuccess] = useState('');
+  const [availableCoupons, setAvailableCoupons] = useState([]);
   
   // Custom experiences & guest details
   const [selectedUsps, setSelectedUsps] = useState([]); 
@@ -100,9 +102,11 @@ const DetailView = () => {
     }
   }, [property]);
 
-  const toggleLike = () => {
+  // toggleLike: optimistic localStorage + sync to backend API
+  const toggleLike = async () => {
     if (!property) return;
     try {
+      // Optimistic UI update first
       const likedList = JSON.parse(localStorage.getItem('liked_stays') || '[]');
       let updated;
       if (likedList.includes(property._id)) {
@@ -113,20 +117,64 @@ const DetailView = () => {
         setIsLiked(true);
       }
       localStorage.setItem('liked_stays', JSON.stringify(updated));
+      // Sync to backend
+      await api.auth.toggleFavourite(property._id);
     } catch (err) {
-      console.error('Failed to toggle favorite stay:', err);
+      console.error('Failed to toggle favourite:', err);
+      // Revert on error
+      const likedList = JSON.parse(localStorage.getItem('liked_stays') || '[]');
+      setIsLiked(likedList.includes(property._id));
     }
   };
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [expandedRoomId, setExpandedRoomId] = useState(null);
   const [bringPet, setBringPet] = useState(false);
   const [reviews, setReviews] = useState([]);
+  const [blockedDates, setBlockedDates] = useState([]); // dates already booked for selected room
 
   // Room gallery images active selection state
   const [activeRoomImages, setActiveRoomImages] = useState({});
 
   // Saved guest history state
   const [savedGuests, setSavedGuests] = useState([]);
+
+  // Lightbox & Touch states
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState(0);
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const [lightboxTouchStart, setLightboxTouchStart] = useState(null);
+  const [lightboxTouchEnd, setLightboxTouchEnd] = useState(null);
+
+  const photosArray = property 
+    ? (Array.isArray(property.photos) 
+        ? property.photos 
+        : (typeof property.photos === 'string' && property.photos 
+            ? [property.photos] 
+            : []))
+    : [];
+
+  const displayPhotos = photosArray.length > 0 
+    ? photosArray 
+    : ['https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80'];
+
+  // Keyboard navigation for Lightbox
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsLightboxOpen(false);
+      } else if (e.key === 'ArrowRight') {
+        setLightboxIdx((prev) => (prev + 1) % displayPhotos.length);
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIdx((prev) => (prev - 1 + displayPhotos.length) % displayPhotos.length);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, displayPhotos]);
 
   // Request browser Notification permissions and load saved guests on mount
   useEffect(() => {
@@ -165,7 +213,7 @@ const DetailView = () => {
     { title: 'Guided Tea Plantations Trekking', description: 'Guided morning walk to tea gardens and waterfalls', price: 1200, chargeType: 'per_person' }
   ];
 
-  const propertyExperiences = (property && property.usps && property.usps.length > 0) ? property.usps : mockExperiences;
+  const propertyExperiences = (property && property.usps && property.usps.length > 0) ? property.usps : [];
 
   useEffect(() => {
     fetchPropertyDetails();
@@ -178,6 +226,20 @@ const DetailView = () => {
         setAdultsCount(1);
         setChildrenCount(0);
         setGuestDetails([{ name: '', age: '' }]);
+      }
+
+      // Fetch room blocked dates whenever the selected room changes
+      const roomId = selectedRoom._id;
+      if (roomId && roomId !== 'default_room_id') {
+        api.rooms.getAvailability(roomId)
+          .then(res => {
+            if (res.success) {
+              setBlockedDates(res.blockedDates || []);
+            }
+          })
+          .catch(() => setBlockedDates([]));
+      } else {
+        setBlockedDates([]);
       }
     }
   }, [selectedRoom]);
@@ -238,6 +300,16 @@ const DetailView = () => {
 
       setStartDate(localStart || today.toISOString().split('T')[0]);
       setEndDate(localEnd || tomorrow.toISOString().split('T')[0]);
+
+      // 3. Fetch public coupons for property
+      try {
+        const couponsRes = await api.coupons.getPropertyCouponsPublic(propRes.property._id);
+        if (couponsRes.success) {
+          setAvailableCoupons(couponsRes.coupons || []);
+        }
+      } catch (cErr) {
+        console.error('Failed to load coupons:', cErr);
+      }
     } catch (err) {
       setError(err.message || 'Failed to load property details');
     } finally {
@@ -344,26 +416,42 @@ const DetailView = () => {
       return acc + item.price;
     }, 0);
 
+    // Apply Nest Partner Discount
+    let nestPartnerDiscount = 0;
+    const isNestPartnerEligible = user && user.owlsPoints >= 250 && property?.owner?.nestPartner;
+    if (isNestPartnerEligible) {
+      nestPartnerDiscount = Math.round(base * 0.10);
+    }
+
     return {
       base,
       deposit,
       discount,
+      nestPartnerDiscount,
       uspsTotal,
-      total: base + deposit + uspsTotal - discount
+      total: base + deposit + uspsTotal - discount - nestPartnerDiscount
     };
   };
 
   const triggerBookingNotifications = (booking) => {
+    // Push in-app notification to the bell system
+    pushNotification({
+      type: 'booking',
+      title: 'Stay Confirmed! 🎒',
+      body: `Your booking at ${property.name} is confirmed. Check-in OTP: ${booking.checkInOTP}`
+    });
+
+    // Also attempt browser notification
     if ('Notification' in window) {
       if (Notification.permission === 'granted') {
-        new Notification("Stay Confirmed! 🎒", {
+        new Notification('Stay Confirmed! 🎒', {
           body: `Your booking at ${property.name} is confirmed. Check-in OTP: ${booking.checkInOTP}`,
           icon: '/logo.png'
         });
       } else if (Notification.permission !== 'denied') {
         Notification.requestPermission().then(permission => {
           if (permission === 'granted') {
-            new Notification("Stay Confirmed! 🎒", {
+            new Notification('Stay Confirmed! 🎒', {
               body: `Your booking at ${property.name} is confirmed. Check-in OTP: ${booking.checkInOTP}`,
               icon: '/logo.png'
             });
@@ -441,8 +529,46 @@ const DetailView = () => {
         setSavedGuests(savedList);
       }
 
-      setBookingSuccess(res.booking);
-      triggerBookingNotifications(res.booking);
+      if (res.razorpayOrderId && window.Razorpay) {
+        const options = {
+          key: 'rzp_test_mock_123', // Real key should come from an API/env
+          amount: res.booking.totalAmount * 100,
+          currency: 'INR',
+          name: 'Nowhere Nest',
+          description: `Booking for ${property.name}`,
+          order_id: res.razorpayOrderId,
+          handler: async function (response) {
+            try {
+              const verifyRes = await api.payments.verify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                bookingId: res.booking._id
+              });
+              if (verifyRes.success) {
+                triggerBookingNotifications(res.booking);
+                navigate('/trips');
+              }
+            } catch (verErr) {
+              setError(verErr.message || 'Payment verification failed');
+            }
+          },
+          prefill: {
+            name: user?.name || '',
+            email: user?.email || '',
+            contact: user?.phone || ''
+          },
+          theme: { color: '#0A3B2A' }
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (response) {
+          setError('Payment failed: ' + response.error.description);
+        });
+        rzp.open();
+      } else {
+        triggerBookingNotifications(res.booking);
+        navigate('/trips');
+      }
     } catch (err) {
       setError(err.message || 'Booking checkout failed');
     } finally {
@@ -463,70 +589,227 @@ const DetailView = () => {
     );
   }
 
-  const { base, deposit, discount, uspsTotal, total } = getPriceBreakdown();
+  const { base, deposit, discount, nestPartnerDiscount, uspsTotal, total } = getPriceBreakdown();
   
-  const photosArray = property 
-    ? (Array.isArray(property.photos) 
-        ? property.photos 
-        : (typeof property.photos === 'string' && property.photos 
-            ? [property.photos] 
-            : []))
-    : [];
 
-  const displayPhotos = photosArray.length > 0 
-    ? photosArray 
-    : ['https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80'];
+
+  // Touch gesture swipe handlers
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      setActivePhotoIdx((prev) => (prev + 1) % displayPhotos.length);
+    } else if (isRightSwipe) {
+      setActivePhotoIdx((prev) => (prev - 1 + displayPhotos.length) % displayPhotos.length);
+    }
+  };
+
+  const handleLightboxTouchStart = (e) => {
+    setLightboxTouchEnd(null);
+    setLightboxTouchStart(e.targetTouches[0].clientX);
+  };
+  const handleLightboxTouchMove = (e) => {
+    setLightboxTouchEnd(e.targetTouches[0].clientX);
+  };
+  const handleLightboxTouchEnd = () => {
+    if (!lightboxTouchStart || !lightboxTouchEnd) return;
+    const distance = lightboxTouchStart - lightboxTouchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      setLightboxIdx((prev) => (prev + 1) % displayPhotos.length);
+    } else if (isRightSwipe) {
+      setLightboxIdx((prev) => (prev - 1 + displayPhotos.length) % displayPhotos.length);
+    }
+  };
+
+  const renderMediaGallery = () => {
+    const len = displayPhotos.length;
+    
+    if (len === 1) {
+      return (
+        <section className="detail-media-gallery gallery-layout-single">
+          <div 
+            className="gallery-image-wrapper main-image-container card" 
+            onClick={() => {
+              setLightboxIdx(0);
+              setIsLightboxOpen(true);
+            }}
+          >
+            <img src={displayPhotos[0]} alt={property?.name || 'Stay'} className="gallery-main-img" referrerPolicy="no-referrer" />
+            <button 
+              className={`btn-favorite-circle ${isLiked ? 'liked' : ''}`} 
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleLike();
+              }}
+            >
+              <Heart size={20} fill={isLiked ? '#EF4444' : 'none'} />
+            </button>
+          </div>
+        </section>
+      );
+    }
+    
+    if (len === 2) {
+      return (
+        <section className="detail-media-gallery gallery-layout-split">
+          {displayPhotos.map((url, idx) => (
+            <div 
+              key={idx} 
+              className="gallery-image-wrapper card" 
+              onClick={() => {
+                setLightboxIdx(idx);
+                setIsLightboxOpen(true);
+              }}
+            >
+              <img src={url} alt={`${property?.name || 'Stay'} ${idx + 1}`} className="gallery-main-img" referrerPolicy="no-referrer" />
+              {idx === 0 && (
+                <button 
+                  className={`btn-favorite-circle ${isLiked ? 'liked' : ''}`} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike();
+                  }}
+                >
+                  <Heart size={20} fill={isLiked ? '#EF4444' : 'none'} />
+                </button>
+              )}
+            </div>
+          ))}
+        </section>
+      );
+    }
+    
+    if (len === 3) {
+      return (
+        <section className="detail-media-gallery gallery-layout-grid-3">
+          <div 
+            className="gallery-image-wrapper main-image-container card" 
+            onClick={() => {
+              setLightboxIdx(0);
+              setIsLightboxOpen(true);
+            }}
+          >
+            <img src={displayPhotos[0]} alt={property?.name || 'Stay'} className="gallery-main-img" referrerPolicy="no-referrer" />
+            <button 
+              className={`btn-favorite-circle ${isLiked ? 'liked' : ''}`} 
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleLike();
+              }}
+            >
+              <Heart size={20} fill={isLiked ? '#EF4444' : 'none'} />
+            </button>
+          </div>
+          <div className="thumbnails-column-two">
+            {displayPhotos.slice(1, 3).map((url, idx) => (
+              <div 
+                key={idx + 1} 
+                className="gallery-image-wrapper card" 
+                onClick={() => {
+                  setLightboxIdx(idx + 1);
+                  setIsLightboxOpen(true);
+                }}
+              >
+                <img src={url} alt={`${property?.name || 'Stay'} ${idx + 2}`} className="gallery-main-img" referrerPolicy="no-referrer" />
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    
+    return (
+      <section className="detail-media-gallery gallery-layout-carousel">
+        <div 
+          className="gallery-image-wrapper main-image-container card carousel-container"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onClick={() => {
+            setLightboxIdx(activePhotoIdx);
+            setIsLightboxOpen(true);
+          }}
+        >
+          <img 
+            src={displayPhotos[activePhotoIdx]} 
+            alt={`${property?.name || 'Stay'} ${activePhotoIdx + 1}`} 
+            className="gallery-main-img carousel-img" 
+            referrerPolicy="no-referrer"
+          />
+          
+          <button 
+            className={`btn-favorite-circle ${isLiked ? 'liked' : ''}`} 
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleLike();
+            }}
+          >
+            <Heart size={20} fill={isLiked ? '#EF4444' : 'none'} />
+          </button>
+
+          <button 
+            type="button"
+            className="carousel-nav-btn prev-btn" 
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePhotoIdx((prev) => (prev - 1 + len) % len);
+            }}
+            aria-label="Previous image"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          
+          <button 
+            type="button"
+            className="carousel-nav-btn next-btn" 
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePhotoIdx((prev) => (prev + 1) % len);
+            }}
+            aria-label="Next image"
+          >
+            <ChevronRight size={24} />
+          </button>
+
+          <div className="carousel-index-badge">
+            {activePhotoIdx + 1} / {len}
+          </div>
+
+          <div className="carousel-dots-container" onClick={e => e.stopPropagation()}>
+            {displayPhotos.map((_, idx) => (
+              <span 
+                key={idx} 
+                className={`carousel-dot ${activePhotoIdx === idx ? 'active' : ''}`}
+                onClick={() => setActivePhotoIdx(idx)}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  };
 
   return (
     <div className="detail-page container">
       <Link to="/" className="btn-back flex-center"><ArrowLeft size={16} /> {translate('back_to_home', language)}</Link>
       
-      {/* Visual Image Header (Split Grid Media Gallery) */}
-      <section className="detail-media-gallery">
-        {/* Left Side: 1 large main active image */}
-        <div className="main-image-container card" style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
-          <img 
-            src={displayPhotos[activePhotoIdx] || 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80'} 
-            alt={property.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'all 0.3s ease' }}
-          />
-          <button 
-            className={`btn-favorite-circle ${isLiked ? 'liked' : ''}`} 
-            style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 11, cursor: 'pointer', backgroundColor: isLiked ? '#FEE2E2' : 'white', color: isLiked ? '#EF4444' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
-            onClick={toggleLike}
-          >
-            <Heart size={20} fill={isLiked ? '#EF4444' : 'none'} />
-          </button>
-        </div>
-
-        {/* Right Side: 3 vertical smaller thumbnail previews */}
-        <div className="thumbnails-column" style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
-          {displayPhotos.slice(0, 3).map((url, index) => (
-            <div 
-              key={index} 
-              className={`thumbnail-card card ${activePhotoIdx === index ? 'active' : ''}`} 
-              onClick={() => setActivePhotoIdx(index)}
-              style={{ flex: 1, overflow: 'hidden', cursor: 'pointer', border: activePhotoIdx === index ? '3px solid var(--primary-color)' : '1px solid var(--border-color)', transform: activePhotoIdx === index ? 'scale(0.98)' : 'none', transition: 'all 0.2s ease' }}
-            >
-              <img 
-                src={url} 
-                alt={`${property.name} thumbnail ${index + 1}`} 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            </div>
-          ))}
-          {/* If there are fewer than 3 photos, fill with placeholders */}
-          {displayPhotos.length < 3 && Array.from({ length: 3 - displayPhotos.length }).map((_, idx) => (
-            <div 
-              key={`empty-${idx}`} 
-              className="thumbnail-card card empty-placeholder" 
-              style={{ flex: 1, backgroundColor: '#F1F5F9', border: '1px dashed #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: '600' }}>No more photos</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Visual Image Header (Dynamic Layout Media Gallery) */}
+      {renderMediaGallery()}
 
       {/* Split details content */}
       <div className="detail-split-layout">
@@ -623,10 +906,22 @@ const DetailView = () => {
                           src={getRoomImage(rm)} 
                           alt={rm.category} 
                           style={{ width: '80px', height: '60px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border-color)' }} 
+                          referrerPolicy="no-referrer"
                         />
                         <div>
                           <h6 style={{ textTransform: 'capitalize', fontSize: '15px', fontWeight: '800', margin: '0 0 4px 0' }}>{rm.category} {translate('room_suffix', language)}</h6>
                           <span style={{ fontSize: '12px', color: 'var(--text-medium)', display: 'block', marginBottom: '4px' }}>{translate('max_capacity_label', language)}: {rm.capacity} {translate('guests_label', language)}</span>
+                          
+                          {rm.roomsAvailable !== undefined && rm.roomsAvailable <= 3 && rm.roomsAvailable > 0 && (
+                            <span style={{ fontSize: '10px', color: '#EF4444', background: '#FEE2E2', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                              🔥 Hurry! Only {rm.roomsAvailable} left
+                            </span>
+                          )}
+                          {rm.roomsAvailable === 0 && (
+                            <span style={{ fontSize: '10px', color: '#64748B', background: '#F1F5F9', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                              🚫 Sold Out for selected dates
+                            </span>
+                          )}
                           
                           {rm.images && rm.images.length > 0 && (
                             <button 
@@ -682,6 +977,7 @@ const DetailView = () => {
                             src={activeRoomImages[rm._id] || rm.images[0]} 
                             alt={`${rm.category} room main`} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            referrerPolicy="no-referrer"
                           />
                         </div>
 
@@ -706,6 +1002,7 @@ const DetailView = () => {
                                   transition: 'all 0.2s',
                                   flexShrink: 0 
                                 }}
+                                referrerPolicy="no-referrer"
                               />
                             );
                           })}
@@ -773,8 +1070,22 @@ const DetailView = () => {
           {/* Exact Map Location */}
           <hr className="divider" />
           <div className="detail-map-section">
-            <h4>Location on Map</h4>
-            <p className="sub-tagline">Explore the exact surroundings and reach details</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h4 style={{ margin: 0 }}>Location on Map</h4>
+                <p className="sub-tagline" style={{ margin: '4px 0 0 0' }}>Explore the exact surroundings and reach details</p>
+              </div>
+              {property && property.location && property.location.lat && property.location.lng && (
+                <a 
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`}
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={{ padding: '8px 16px', background: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: '600', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)' }}
+                >
+                  🗺️ Get Directions
+                </a>
+              )}
+            </div>
             <div className="detail-map-card card" style={{ height: '300px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
               {property && (
                 <LeafletMap 
@@ -798,31 +1109,35 @@ const DetailView = () => {
           </div>
 
           {/* Local Tours / USPs Section */}
-          <hr className="divider" />
-          <div className="detail-usps-section">
-            <h4>{translate('direct_experiences', language)}</h4>
-            <p className="sub-tagline">{translate('experiences_tagline', language)}</p>
-            <div className="detail-usps-list">
-              {propertyExperiences.map((usp, idx) => (
-                <div 
-                  key={idx} 
-                  className={`detail-usp-card card flex-between ${selectedUsps.includes(idx) ? 'active' : ''}`}
-                  onClick={() => handleUspToggle(idx)}
-                >
-                  <div className="usp-text-info">
-                    <h6>{property.usps && property.usps.length > 0 ? usp.title : translate(idx === 0 ? 'cruise_title' : 'trekking_title', language)}</h6>
-                    <p>{property.usps && property.usps.length > 0 ? usp.description : translate(idx === 0 ? 'cruise_desc' : 'trekking_desc', language)}</p>
-                  </div>
-                  <div className="usp-price-toggle flex-center">
-                    <span className="price-tag">+{formatPrice(usp.price)}</span>
-                    <div className={`checkbox-circle flex-center ${selectedUsps.includes(idx) ? 'checked' : ''}`}>
-                      {selectedUsps.includes(idx) && <span>✓</span>}
+          {propertyExperiences.length > 0 && (
+            <>
+              <hr className="divider" />
+              <div className="detail-usps-section">
+                <h4>{translate('direct_experiences', language)}</h4>
+                <p className="sub-tagline">{translate('experiences_tagline', language)}</p>
+                <div className="detail-usps-list">
+                  {propertyExperiences.map((usp, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`detail-usp-card card flex-between ${selectedUsps.includes(idx) ? 'active' : ''}`}
+                      onClick={() => handleUspToggle(idx)}
+                    >
+                      <div className="usp-text-info">
+                        <h6>{usp.title}</h6>
+                        <p>{usp.description}</p>
+                      </div>
+                      <div className="usp-price-toggle flex-center">
+                        <span className="price-tag">+{formatPrice(usp.price)}</span>
+                        <div className={`checkbox-circle flex-center ${selectedUsps.includes(idx) ? 'checked' : ''}`}>
+                          {selectedUsps.includes(idx) && <span>✓</span>}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
 
           {/* Customer Reviews Section */}
           <hr className="divider" />
@@ -833,10 +1148,10 @@ const DetailView = () => {
             <div className="reviews-summary-card card" style={{ display: 'grid', gridTemplateColumns: '1fr 2.2fr', gap: '24px', padding: '24px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
               {/* Score card */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid var(--border-color)', paddingRight: '20px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '800', color: 'var(--primary-color)' }}>{property.starRating || '4.0'}</span>
+                <span style={{ fontSize: '48px', fontWeight: '800', color: 'var(--primary-color)' }}>{property.starRating || '3.0'}</span>
                 <div style={{ display: 'flex', gap: '2px', margin: '8px 0' }}>
                   {[1, 2, 3, 4, 5].map(s => (
-                    <Star key={s} size={18} fill={s <= Math.round(property.starRating || 4) ? '#F59E0B' : 'none'} stroke={s <= Math.round(property.starRating || 4) ? '#F59E0B' : '#CBD5E1'} />
+                    <Star key={s} size={18} fill={s <= Math.round(property.starRating || 3) ? '#F59E0B' : 'none'} stroke={s <= Math.round(property.starRating || 3) ? '#F59E0B' : '#CBD5E1'} />
                   ))}
                 </div>
                 <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: '600' }}>Overall Rating</span>
@@ -1076,6 +1391,7 @@ const DetailView = () => {
                     <DateRangeCalendar 
                       startDate={startDate}
                       endDate={endDate}
+                      blockedDates={blockedDates}
                       onChange={(start, end) => {
                         setStartDate(start);
                         setEndDate(end);
@@ -1314,32 +1630,111 @@ const DetailView = () => {
 
                     <hr className="summary-divider" style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '12px 0' }} />
                     
+                    {nestPartnerDiscount > 0 && (
+                      <div className="flex-between summary-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px', color: '#16A34A', fontWeight: 'bold', background: '#DCFCE7', padding: '8px', borderRadius: '6px' }}>
+                        <span>✨ Nest Partner Discount (Grand Tier)</span>
+                        <span>-{formatPrice(nestPartnerDiscount)}</span>
+                      </div>
+                    )}
+
                     <div className="flex-between summary-row total-row" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '15px' }}>
                       <span>{translate('checkout_total_label', language)}</span>
                       <span>{formatPrice(total)}</span>
                     </div>
                   </div>
 
-                  {/* Coupon Application Panel */}
-                  <div className="coupon-entry-panel" style={{ marginBottom: '20px' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label style={{ fontSize: '11px', fontWeight: '700' }}><Tag size={12} /> {translate('apply_promo_label', language)}</label>
-                      <div className="flex gap-8" style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. SUMMER20" 
-                          value={couponCode} 
-                          onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                          className="form-control"
-                          style={{ padding: '6px 10px', fontSize: '13px', flex: 1 }}
-                        />
-                        <button type="button" onClick={handleApplyCoupon} className="btn btn-secondary btn-small" style={{ borderRadius: '8px' }}>
-                          {translate('apply_btn', language)}
-                        </button>
+                  {/* Coupon Ticket Panel */}
+                  <div className="coupon-ticket-panel" style={{ marginBottom: '20px' }}>
+                    <div className="coupon-ticket">
+                      <div className="coupon-ticket-notch left"></div>
+                      <div className="coupon-ticket-notch right"></div>
+                      <div className="coupon-ticket-content">
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#0A3B2A', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            🎟️ {translate('apply_promo_label', language)}
+                          </label>
+                          <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 8px 0', fontWeight: '500' }}>
+                            Have a discount promo code? Redeem it below for direct savings.
+                          </p>
+                          <div className="flex gap-8" style={{ display: 'flex', gap: '8px' }}>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. SUMMER20" 
+                              value={couponCode} 
+                              onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                              className="form-control"
+                              style={{ padding: '8px 12px', fontSize: '13px', flex: 1, border: '1.5px solid #86EFAC', borderRadius: '8px' }}
+                            />
+                            <button 
+                              type="button" 
+                              onClick={handleApplyCoupon} 
+                              className="btn btn-secondary btn-small" 
+                              style={{ borderRadius: '8px', background: '#0A3B2A', color: 'white', border: 'none', fontWeight: '700', padding: '0 16px' }}
+                            >
+                              {translate('apply_btn', language)}
+                            </button>
+                          </div>
+                        </div>
+                        {couponSuccess && <p style={{ fontSize: '11px', color: '#16A34A', fontWeight: '700', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>✅ {couponSuccess}</p>}
+                        {couponError && <p style={{ fontSize: '11px', color: '#EF4444', fontWeight: '700', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>❌ {couponError}</p>}
                       </div>
                     </div>
-                    {couponSuccess && <p style={{ fontSize: '11px', color: '#16A34A', fontWeight: '600', marginTop: '6px' }}>{couponSuccess}</p>}
-                    {couponError && <p style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600', marginTop: '6px' }}>{couponError}</p>}
+
+                    {/* Available Offers (Rotated Ticket Layout - De-simulated) */}
+                    {availableCoupons.length > 0 && (
+                      <div>
+                        <h4 className="available-offers-heading">
+                          🏷️ Available Property Offers
+                        </h4>
+                        <div className="offers-tickets-list">
+                          {availableCoupons.map((c) => (
+                            <div 
+                              key={c._id} 
+                              className="nwn-offer-ticket"
+                              onClick={() => {
+                                setCouponCode(c.code);
+                                // Call validate manually on click to apply it instantly
+                                setTimeout(async () => {
+                                  try {
+                                    setCouponError('');
+                                    setCouponSuccess('');
+                                    const res = await api.coupons.validate(property._id, c.code);
+                                    setAppliedCoupon(res);
+                                    setCouponSuccess(`Coupon code applied! ${res.discountPercent}% discount is active.`);
+                                  } catch (err) {
+                                    setCouponError(err.message || 'Failed to apply coupon');
+                                    setAppliedCoupon(null);
+                                  }
+                                }, 50);
+                              }}
+                            >
+                              <div className="nwn-offer-ticket-notch left"></div>
+                              <div className="nwn-offer-ticket-notch right"></div>
+                              <div className="nwn-offer-ticket-divider"></div>
+                              
+                              <div className="nwn-offer-ticket-left">
+                                <div className="nwn-offer-ticket-header">
+                                  <span className="nwn-offer-ticket-logo">🦉</span>
+                                  <span className="nwn-offer-ticket-code">{c.code}</span>
+                                </div>
+                                <h4 className="nwn-offer-ticket-title">
+                                  Enjoy {c.discountPercent}% OFF on this stay
+                                </h4>
+                                <span className="nwn-offer-ticket-expiry">
+                                  *Valid until {new Date(c.expiryDate).toLocaleDateString()}
+                                </span>
+                              </div>
+                              
+                              <div className="nwn-offer-ticket-right">
+                                <span className="nwn-offer-ticket-discount-text">
+                                  {c.discountPercent}% Off
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {error && (
@@ -1366,6 +1761,74 @@ const DetailView = () => {
           </div>
         </div>
       </div>
+      {/* Fullscreen Lightbox Modal */}
+      {isLightboxOpen && (
+        <div 
+          className="lightbox-modal" 
+          onClick={() => setIsLightboxOpen(false)}
+          onTouchStart={handleLightboxTouchStart}
+          onTouchMove={handleLightboxTouchMove}
+          onTouchEnd={handleLightboxTouchEnd}
+        >
+          <button 
+            type="button"
+            className="lightbox-close-btn" 
+            onClick={() => setIsLightboxOpen(false)}
+            aria-label="Close lightbox"
+          >
+            <X size={28} />
+          </button>
+
+          <button 
+            type="button"
+            className="lightbox-nav-btn lightbox-prev-btn" 
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxIdx((prev) => (prev - 1 + displayPhotos.length) % displayPhotos.length);
+            }}
+            aria-label="Previous image"
+          >
+            <ChevronLeft size={36} />
+          </button>
+
+          <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={displayPhotos[lightboxIdx]} 
+              alt={`${property?.name || 'Stay'} full view ${lightboxIdx + 1}`} 
+              className="lightbox-img" 
+              referrerPolicy="no-referrer"
+            />
+            <div className="lightbox-caption">
+              <h4>{property?.name || 'Stay'}</h4>
+              <span>Photo {lightboxIdx + 1} of {displayPhotos.length}</span>
+            </div>
+          </div>
+
+          <button 
+            type="button"
+            className="lightbox-nav-btn lightbox-next-btn" 
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxIdx((prev) => (prev + 1) % displayPhotos.length);
+            }}
+            aria-label="Next image"
+          >
+            <ChevronRight size={36} />
+          </button>
+
+          <div className="lightbox-thumbnails-strip" onClick={(e) => e.stopPropagation()}>
+            {displayPhotos.map((url, idx) => (
+              <div 
+                key={idx} 
+                className={`lightbox-thumb-wrapper ${lightboxIdx === idx ? 'active' : ''}`}
+                onClick={() => setLightboxIdx(idx)}
+              >
+                <img src={url} alt={`Thumbnail ${idx + 1}`} referrerPolicy="no-referrer" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   );

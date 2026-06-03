@@ -474,7 +474,7 @@ const VibeReelCard = ({ vibe, active, user, onLikeToggle, muted, setMuted }) => 
             <span className="vibe-end-eyebrow">Explore this Nest</span>
             <h4 className="vibe-end-title">{vibe.property?.name || 'Beautiful Resort'}</h4>
             <div className="vibe-end-rating">
-              <span>★ {vibe.property?.starRating || '4.5'}</span>
+              <span>★ {vibe.property?.starRating || '3'}</span>
             </div>
             <p className="vibe-end-desc">Zero brokerage · Direct Host Verified Stay</p>
             <button className="vibe-end-visit-btn" onClick={handleVisitStay}>Visit Resort 🏡</button>

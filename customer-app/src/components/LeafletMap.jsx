@@ -51,6 +51,7 @@ const LeafletMap = ({ listings = [], center = [9.5929, 76.4227], zoom = 11, onSe
   const userMarkerRef = useRef(null);
   const tileLayerRef = useRef(null);
   const watchIdRef = useRef(null);
+  const containerRef = useRef(null);
 
   const [activeRoute, setActiveRoute] = useState(null);
   const [mapType, setMapType] = useState('road'); // 'road' or 'satellite'
@@ -205,8 +206,8 @@ const LeafletMap = ({ listings = [], center = [9.5929, 76.4227], zoom = 11, onSe
 
   // 1. Initialize Map
   useEffect(() => {
-    if (!mapRef.current && window.L) {
-      mapRef.current = window.L.map('leaflet-map-element', { zoomControl: false }).setView(center, zoom);
+    if (!mapRef.current && window.L && containerRef.current) {
+      mapRef.current = window.L.map(containerRef.current, { zoomControl: false }).setView(center, zoom);
 
       // Default to road tile
       const roadUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -231,6 +232,16 @@ const LeafletMap = ({ listings = [], center = [9.5929, 76.4227], zoom = 11, onSe
       // Cleanups
     };
   }, [center, zoom, onSelectCoords]);
+
+  // Unmount Cleanup
+  useEffect(() => {
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
 
   // 2. Render Markers and User Dot
   useEffect(() => {
@@ -396,7 +407,7 @@ const LeafletMap = ({ listings = [], center = [9.5929, 76.4227], zoom = 11, onSe
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div id="leaflet-map-element" style={{ width: '100%', height: '100%', borderRadius: 'inherit' }}></div>
+      <div ref={containerRef} style={{ width: '100%', height: '100%', borderRadius: 'inherit' }}></div>
       {onSelectCoords && (
         <div style={{
           position: 'absolute',

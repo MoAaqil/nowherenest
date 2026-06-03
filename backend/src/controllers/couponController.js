@@ -117,3 +117,22 @@ exports.deleteCoupon = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Get Public Coupons for Property (de-simulated available offers list)
+exports.getPropertyCouponsPublic = async (req, res) => {
+  try {
+    const { propertyId } = req.params;
+    const coupons = await Coupon.find({
+      property: propertyId,
+      isActive: true,
+      expiryDate: { $gt: new Date() }
+    });
+    
+    // Filter out coupons that have reached max uses
+    const activeCoupons = coupons.filter(c => c.usesCount < c.maxUses);
+    
+    res.status(200).json({ success: true, count: activeCoupons.length, coupons: activeCoupons });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

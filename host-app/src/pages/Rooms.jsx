@@ -300,6 +300,7 @@ const Rooms = () => {
                     : (typeof r.images === 'string' && r.images ? r.images : 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=800&q=80')
                   } 
                   alt={r.category} 
+                  referrerPolicy="no-referrer"
                 />
                 <span className="price-tag">₹{r.price.toLocaleString('en-IN')}<span>/night</span></span>
               </div>
@@ -457,6 +458,7 @@ const Rooms = () => {
                             alt={`room-photo-${idx}`} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                             onError={() => setBrokenImages(prev => ({ ...prev, [url]: true }))}
+                            referrerPolicy="no-referrer"
                           />
                         )}
                         <button 

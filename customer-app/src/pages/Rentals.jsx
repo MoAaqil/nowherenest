@@ -241,6 +241,7 @@ const Rentals = () => {
                     <img 
                       src={item.images[0] || 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=500&q=80'} 
                       alt={item.title} 
+                      referrerPolicy="no-referrer"
                     />
                     <div className="no-brokerage-tag">{translate('no_brokerage', language)}</div>
                   </div>
