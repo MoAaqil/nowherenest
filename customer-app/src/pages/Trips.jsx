@@ -90,10 +90,9 @@ const getNearbyPlaces = async (lat, lng, address) => {
   try {
     const osmQuery = `[out:json][timeout:8];
       (
-        node["amenity"="restaurant"](around:4000, ${latitude}, ${longitude});
-        node["tourism"="hotel"](around:4000, ${latitude}, ${longitude});
+        node["amenity"="restaurant"](around:8000, ${latitude}, ${longitude});
       );
-      out tags 15;`;
+      out tags 30;`;
     const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(osmQuery)}`);
     if (res.ok) {
       const data = await res.json();
@@ -101,23 +100,24 @@ const getNearbyPlaces = async (lat, lng, address) => {
         const items = data.elements
           .map(el => {
             const name = el.tags.name;
-            const isHotel = el.tags.tourism === 'hotel';
-            const type = isHotel ? 'Hotel' : 'Restaurant';
+            const type = 'Restaurant';
             const rating = (Math.random() * (4.9 - 4.2) + 4.2).toFixed(1);
-            const dist = calculateDistance(latitude, longitude, el.lat, el.lon).toFixed(1);
+            const distNum = calculateDistance(latitude, longitude, el.lat, el.lon);
+            const dist = distNum.toFixed(1);
             return {
               name,
               type,
               rating,
+              distNum,
               dist: `${dist} km`,
-              desc: isHotel ? `Premium hospitality stay` : `Authentic local dining`,
+              desc: `Authentic local dining`,
               mapLink: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + queryCity)}`
             };
           })
-          .filter(item => item.name && item.name !== 'Unnamed' && item.name.length > 2);
+          .filter(item => item.name && item.name !== 'Unnamed' && item.name.length > 2 && item.distNum >= 2 && item.distNum <= 8);
         
         if (items.length > 0) {
-          return items.sort((a, b) => parseFloat(a.dist) - parseFloat(b.dist)).slice(0, 6);
+          return items.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating)).slice(0, 6);
         }
       }
     }
@@ -623,7 +623,7 @@ const Trips = () => {
                                 const lat = booking.property?.location?.coordinates?.[1] || booking.property?.location?.lat || 9.5929;
                                 const lng = booking.property?.location?.coordinates?.[0] || booking.property?.location?.lng || 76.4227;
                                 return (
-                                  <div className="trip-live-map-container" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank')}>
+                                  <div className="trip-live-map-container" style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: 'pointer' }} onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank')}>
                                     <LeafletMap 
                                       listings={[{
                                         _id: booking.property?._id,
@@ -665,14 +665,14 @@ const Trips = () => {
                                 <button 
                                   type="button"
                                   onClick={() => handleCheckout(booking._id)}
-                                  style={{ flex: 1, padding: '8px 12px', background: '#EF4444', color: 'white', fontWeight: '750', fontSize: '12px', borderRadius: '8px', cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                  style={{ flex: 1, padding: '16px 20px', background: '#EF4444', color: 'white', fontWeight: '800', fontSize: '15px', borderRadius: '12px', cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.2)' }}
                                 >
                                   👋 Check Out
                                 </button>
                                 <button 
                                   type="button"
                                   onClick={() => handleExtend(booking)}
-                                  style={{ flex: 1, padding: '8px 12px', background: '#0A3B2A', color: 'white', fontWeight: '750', fontSize: '12px', borderRadius: '8px', cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                  style={{ flex: 1, padding: '16px 20px', background: '#0A3B2A', color: 'white', fontWeight: '800', fontSize: '15px', borderRadius: '12px', cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(10, 59, 42, 0.2)' }}
                                 >
                                   ➕ Extend Stay
                                 </button>
@@ -773,20 +773,22 @@ const Trips = () => {
 
                             {/* Section 3: Nearby Recommendations (Stays & Dining) */}
                             <div className="guide-dining" style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1.5px solid #E2E8F0' }}>
-                              <span style={{ fontSize: '10px', fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
-                                📍 Nearby Recommended Dining &amp; Stays (Map Verified)
+                              <span style={{ fontSize: '11px', fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '12px' }}>
+                                📍 Nearby Local Dining &amp; Restaurants (Map Verified)
                               </span>
-                              <div className="dining-grid">
+                              <div className="dining-grid" style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
                                 {(nearbyPlaces[booking._id] || [
                                   // Quick default preview based on location
                                   ...((booking.property?.address || '').toLowerCase().includes('madurai') ? [
-                                    { name: "Murugan Idli Shop", type: "Restaurant", rating: "4.6", dist: "1.1 km", desc: "Famous for traditional soft idlis and tasty chutneys", mapLink: "https://www.google.com/maps/search/?api=1&query=Murugan+Idli+Shop+Madurai" },
-                                    { name: "Heritage Madurai", type: "Hotel", rating: "4.8", dist: "2.3 km", desc: "Premium heritage resort with grand swimming pool", mapLink: "https://www.google.com/maps/search/?api=1&query=Heritage+Madurai" },
-                                    { name: "Courtyard by Marriott", type: "Hotel", rating: "4.7", dist: "1.5 km", desc: "Upscale modern luxury hotel with premium dining", mapLink: "https://www.google.com/maps/search/?api=1&query=Courtyard+by+Marriott+Madurai" }
+                                    { name: "Amma Mess", type: "Restaurant", rating: "4.8", dist: "2.5 km", desc: "Famous for traditional non-veg meals", mapLink: "https://www.google.com/maps/search/?api=1&query=Amma+Mess+Madurai" },
+                                    { name: "Sree Sabarees", type: "Restaurant", rating: "4.5", dist: "3.2 km", desc: "Premium pure veg south indian dining", mapLink: "https://www.google.com/maps/search/?api=1&query=Sree+Sabarees+Madurai" },
+                                    { name: "Phil's Bistro", type: "Restaurant", rating: "4.7", dist: "5.1 km", desc: "Authentic Italian and Continental dishes", mapLink: "https://www.google.com/maps/search/?api=1&query=Phils+Bistro+Madurai" },
+                                    { name: "Bistro 1427", type: "Restaurant", rating: "4.4", dist: "4.8 km", desc: "Cozy cafe with great burgers and shakes", mapLink: "https://www.google.com/maps/search/?api=1&query=Bistro+1427+Madurai" }
                                   ] : [
-                                    { name: "Altaf's Cafe", type: "Restaurant", rating: "4.8", dist: "1.2 km", desc: "Famous for Middle Eastern dishes & beautiful valley views", mapLink: "https://www.google.com/maps/search/?api=1&query=Altafs+Cafe+Kodaikanal" },
-                                    { name: "The Carlton Hotel", type: "Hotel", rating: "4.7", dist: "0.5 km", desc: "Luxury 5-star heritage hotel by the Kodai lake side", mapLink: "https://www.google.com/maps/search/?api=1&query=The+Carlton+Kodaikanal" },
-                                    { name: "The Royal Tibet", type: "Restaurant", rating: "4.7", dist: "0.8 km", desc: "Famous for hot momos, thukpa and Tibetan noodles", mapLink: "https://www.google.com/maps/search/?api=1&query=The+Royal+Tibet+Kodaikanal" }
+                                    { name: "Ten Degrees", type: "Restaurant", rating: "4.8", dist: "2.5 km", desc: "Premium dining with beautiful views", mapLink: "https://www.google.com/maps/search/?api=1&query=Ten+Degrees+Kodaikanal" },
+                                    { name: "Muncheez", type: "Restaurant", rating: "4.6", dist: "3.2 km", desc: "Great spot for pizzas, burgers, and rolls", mapLink: "https://www.google.com/maps/search/?api=1&query=Muncheez+Kodaikanal" },
+                                    { name: "Astoria Veg", type: "Restaurant", rating: "4.5", dist: "4.1 km", desc: "Authentic south indian meals", mapLink: "https://www.google.com/maps/search/?api=1&query=Astoria+Veg+Kodaikanal" },
+                                    { name: "Altaf's Cafe", type: "Restaurant", rating: "4.7", dist: "6.2 km", desc: "Middle eastern dishes & mountain views", mapLink: "https://www.google.com/maps/search/?api=1&query=Altafs+Cafe+Kodaikanal" }
                                   ])
                                 ]).map((place, pIdx) => (
                                   <div 

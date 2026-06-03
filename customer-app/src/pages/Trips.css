@@ -703,7 +703,7 @@
 
 /* Live map container */
 .trip-live-map-container {
-  height: 200px;
+  height: 320px;
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
@@ -716,7 +716,7 @@
 
 @media (min-width: 768px) {
   .trip-live-map-container {
-    height: 360px;
+    height: 420px;
   }
 }
 
@@ -803,6 +803,8 @@
     scroll-snap-type: x mandatory;
     gap: 12px;
     padding-bottom: 8px;
+    max-height: 420px;
+    overflow-y: auto;
   }
   
   .dining-grid::-webkit-scrollbar {
