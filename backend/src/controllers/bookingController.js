@@ -213,7 +213,7 @@ exports.createBooking = async (req, res) => {
       ownerAmount,
       checkInOTP,
       status: 'confirmed',
-      paymentStatus: 'unpaid', // Will be updated by Razorpay Webhook
+      paymentStatus: 'pending', // Will be updated by Razorpay Webhook
       noteToOwner: noteToOwner || '',
       guests: guests || [],
       bookingType: bookingType || 'nightly',
