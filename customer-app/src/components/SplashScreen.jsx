@@ -7,41 +7,117 @@ const SplashScreen = ({ onFinish }) => {
   const [fadeClass, setFadeClass] = useState('fade-in');
 
   useEffect(() => {
-    // 1. Run logo animation for 3.5 seconds, then transition to permission prompts
-    const animTimer = setTimeout(() => {
+    const checkPermissionsAndProgress = async () => {
+      // 1. Run logo animation for 3.5 seconds
+      await new Promise(r => setTimeout(r, 3500));
       setFadeClass('fade-out');
-      setTimeout(() => {
+      await new Promise(r => setTimeout(r, 300));
+      
+      // Check GPS permission state if supported
+      let gpsGranted = false;
+      try {
+        if (navigator.permissions) {
+          const result = await navigator.permissions.query({ name: 'geolocation' });
+          if (result.state === 'granted') {
+            gpsGranted = true;
+            // Get location quietly
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                localStorage.setItem('user_lat', pos.coords.latitude.toString());
+                localStorage.setItem('user_lng', pos.coords.longitude.toString());
+              },
+              () => {}
+            );
+          }
+        }
+      } catch (e) {
+        console.warn("Permission API not supported", e);
+      }
+
+      if (!gpsGranted) {
         setLoadingStep('location_prompt');
         setFadeClass('fade-in');
-      }, 300);
-    }, 3500);
+        return;
+      }
 
-    return () => clearTimeout(animTimer);
-  }, []);
+      // Check Notification state
+      let notifGranted = false;
+      if ('Notification' in window) {
+        notifGranted = Notification.permission === 'granted';
+      }
+
+      if (!notifGranted) {
+        setLoadingStep('notification_prompt');
+        setFadeClass('fade-in');
+        return;
+      }
+
+      // Both granted, skip prompts
+      onFinish();
+    };
+    
+    checkPermissionsAndProgress();
+  }, [onFinish]);
+
+  const proceedToNotifications = () => {
+    let notifGranted = false;
+    if ('Notification' in window) {
+      notifGranted = Notification.permission === 'granted';
+    }
+    
+    if (notifGranted) {
+      onFinish();
+    } else {
+      setFadeClass('fade-out');
+      setTimeout(() => {
+        setLoadingStep('notification_prompt');
+        setFadeClass('fade-in');
+      }, 300);
+    }
+  };
 
   const handleLocationGrant = (allowed) => {
     if (allowed) {
-      localStorage.setItem('gps_enabled', 'true');
-      // Simulate real GPS location storage
-      localStorage.setItem('user_lat', '9.5930');
-      localStorage.setItem('user_lng', '76.4230');
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            localStorage.setItem('gps_enabled', 'true');
+            localStorage.setItem('user_lat', position.coords.latitude.toString());
+            localStorage.setItem('user_lng', position.coords.longitude.toString());
+            proceedToNotifications();
+          },
+          (error) => {
+            console.error("GPS Error:", error);
+            localStorage.setItem('gps_enabled', 'false');
+            proceedToNotifications();
+          }
+        );
+      } else {
+        proceedToNotifications();
+      }
     } else {
       localStorage.setItem('gps_enabled', 'false');
+      proceedToNotifications();
     }
-    
-    // Go to next step
-    setFadeClass('fade-out');
-    setTimeout(() => {
-      setLoadingStep('notification_prompt');
-      setFadeClass('fade-in');
-    }, 300);
   };
 
-  const handleNotificationGrant = (allowed) => {
-    localStorage.setItem('notifications_enabled', allowed ? 'true' : 'false');
-    localStorage.setItem('splash_shown_key', 'true');
+  const handleNotificationGrant = async (allowed) => {
+    if (allowed && 'Notification' in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        localStorage.setItem('notifications_enabled', 'true');
+        new Notification("Welcome to Nowhere Nest!", {
+          body: "You're all set to receive direct booking updates and cab tracking.",
+          icon: "/logo.png"
+        });
+      } else {
+        localStorage.setItem('notifications_enabled', 'false');
+      }
+    } else {
+      localStorage.setItem('notifications_enabled', 'false');
+    }
     
-    // Exit splash
+    localStorage.setItem('splash_shown_key', 'true');
     setFadeClass('fade-out');
     setTimeout(() => {
       onFinish();
