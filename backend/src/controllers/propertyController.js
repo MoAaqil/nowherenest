@@ -220,6 +220,7 @@ exports.getPropertyStats = async (req, res) => {
     bookings.forEach(b => {
       const start = new Date(b.startDate);
       const end = new Date(b.endDate);
+      const created = new Date(b.createdAt || b.startDate); // fallback to start
       
       // Check-ins today
       if (start >= todayStart && start <= todayEnd) {
@@ -231,22 +232,23 @@ exports.getPropertyStats = async (req, res) => {
         todayCheckOuts.push(b);
       }
 
-      // Active guests (currently checked in, or stay overlapping today)
+      // Active guests (currently checked in, overlapping, or checked out today)
       if (b.status === 'checked_in') {
         activeGuestsCount++;
       } else if (b.status === 'confirmed' && start <= todayEnd && end >= todayStart) {
         activeGuestsCount++;
+      } else if (b.status === 'checked_out' && end >= todayStart && end <= todayEnd) {
+        activeGuestsCount++; // still count as occupied for the day's metric
       }
 
-      // Pending approval/status
-      if (b.status === 'pending') {
+      // Pending approval/status or payment
+      if (b.status === 'pending' || b.paymentStatus === 'pending') {
         pendingBookingsCount++;
       }
 
-      // Revenue today estimation (if stay matches today, or absolute sum of checked-in revenue today)
+      // Revenue today estimation (based on booking creation date)
       if (b.paymentStatus === 'paid' && b.status !== 'cancelled') {
-        // If checking in today, add its revenue to today's summary
-        if (start >= todayStart && start <= todayEnd) {
+        if (created >= todayStart && created <= todayEnd) {
           revenueToday += b.ownerAmount;
         }
       }
@@ -272,8 +274,8 @@ exports.getPropertyStats = async (req, res) => {
       let dayBookings = 0;
 
       bookings.forEach(b => {
-        const checkIn = new Date(b.startDate);
-        if (checkIn >= startOfDay && checkIn <= endOfDay && b.paymentStatus === 'paid' && b.status !== 'cancelled') {
+        const created = new Date(b.createdAt || b.startDate);
+        if (created >= startOfDay && created <= endOfDay && b.paymentStatus === 'paid' && b.status !== 'cancelled') {
           dayRev += b.ownerAmount;
           dayBookings++;
         }
