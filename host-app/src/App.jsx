@@ -14,6 +14,7 @@ import Finance from './pages/Finance';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Vibes from './pages/Vibes';
+import Messages from './pages/Messages';
 
 // Protected Route Guard for Host Owner / Staff
 const HostRoute = ({ children }) => {
@@ -72,6 +73,7 @@ const AppLayout = () => {
             <Route path="/staff" element={<HostRoute><Staff /></HostRoute>} />
             <Route path="/promotions" element={<HostRoute><Promotions /></HostRoute>} />
             <Route path="/vibes" element={<HostRoute><Vibes /></HostRoute>} />
+            <Route path="/messages" element={<HostRoute><Messages /></HostRoute>} />
             <Route path="/finance" element={<HostRoute><Finance /></HostRoute>} />
             <Route path="/settings" element={<HostRoute><Settings /></HostRoute>} />
 

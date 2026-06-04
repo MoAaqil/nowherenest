@@ -9,6 +9,7 @@ import { translate } from '../utils/translations';
 import DateRangeCalendar from '../components/DateRangeCalendar';
 import LeafletMap from '../components/LeafletMap';
 import { pushNotification } from '../components/Navbar';
+import ChatWidget from '../components/ChatWidget';
 
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '';
@@ -1828,6 +1829,15 @@ const DetailView = () => {
             ))}
           </div>
         </div>
+      )}
+
+
+      {user && property && (
+        <ChatWidget 
+          propertyId={property._id} 
+          customerId={user._id} 
+          customerName={user.name} 
+        />
       )}
 
     </div>

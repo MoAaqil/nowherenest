@@ -131,17 +131,35 @@ exports.createBooking = async (req, res) => {
     }
 
     // 3. Financial calculations
-    let days = 1;
+    let baseAmount = 0;
     if (bookingType === 'hourly' && durationHours) {
       // Hourly pricing: room.price is per night (8h). Charge proportionally.
-      days = Math.ceil(durationHours / 8) || 1;
+      const days = Math.ceil(durationHours / 8) || 1;
+      baseAmount = room.price * days;
     } else {
-      const diffTime = Math.abs(end - start);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      days = diffDays > 0 ? diffDays : 1;
+      let dCurr = new Date(start);
+      while (dCurr < end) {
+        const dayOfWeek = dCurr.getDay();
+        // 5 is Friday, 6 is Saturday
+        if ((dayOfWeek === 5 || dayOfWeek === 6) && room.weekendPrice && room.weekendPrice > 0) {
+          baseAmount += room.weekendPrice;
+        } else {
+          baseAmount += room.price;
+        }
+        dCurr.setDate(dCurr.getDate() + 1);
+      }
+      if (baseAmount === 0) baseAmount = room.price; // fallback
     }
 
-    let baseAmount = room.price * days;
+    // Apply Surge Pricing if enabled and occupancy >= 80%
+    const occupiedRoomsForSurge = activeBookings + (room.maintenanceBlocks || 0);
+    if (room.enableSurgePricing && (room.totalInventory || 1) > 0) {
+      const occupancyRate = occupiedRoomsForSurge / (room.totalInventory || 1);
+      if (occupancyRate >= 0.8) {
+        // Apply 15% surge
+        baseAmount = Math.round(baseAmount * 1.15);
+      }
+    }
     let discountApplied = 0;
 
     // Apply Nest Partner Program Discount (10% for Grand/Prestige/Royal users)

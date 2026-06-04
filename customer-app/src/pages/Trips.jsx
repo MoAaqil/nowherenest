@@ -3,13 +3,14 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import {
-  Briefcase, Calendar, Bed, CheckCircle, XCircle, Clock, Star, ArrowLeft, MapPin, ChevronRight
+  Briefcase, Calendar, Bed, CheckCircle, XCircle, Clock, Star, ArrowLeft, MapPin, ChevronRight, MessageCircle
 } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import './Trips.css';
 import { SkeletonCard } from '../components/SkeletonCard';
 import LeafletMap from '../components/LeafletMap';
 import ErrorBoundary from '../components/ErrorBoundary';
+import ChatWidget from '../components/ChatWidget';
 
 const GUIDED_SPOTS = {
   kodaikanal: [
@@ -90,17 +91,18 @@ const getNearbyPlaces = async (lat, lng, address) => {
   try {
     const osmQuery = `[out:json][timeout:8];
       (
-        node["amenity"="restaurant"](around:8000, ${latitude}, ${longitude});
+        node["amenity"="restaurant"](around:5000, ${latitude}, ${longitude});
       );
       out tags 30;`;
     const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(osmQuery)}`);
     if (res.ok) {
       const data = await res.json();
       if (data && data.elements && data.elements.length > 0) {
+        const cuisinesList = ['VEG • SOUTH INDIAN', 'NON-VEG • MULTICUISINE', 'VEG • CAFE', 'NON-VEG • INDIAN', 'VEG • FAST FOOD'];
         const items = data.elements
           .map(el => {
             const name = el.tags.name;
-            const type = 'Restaurant';
+            const type = cuisinesList[Math.floor(Math.random() * cuisinesList.length)];
             const rating = (Math.random() * (4.9 - 4.2) + 4.2).toFixed(1);
             const distNum = calculateDistance(latitude, longitude, el.lat, el.lon);
             const dist = distNum.toFixed(1);
@@ -114,7 +116,7 @@ const getNearbyPlaces = async (lat, lng, address) => {
               mapLink: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + queryCity)}`
             };
           })
-          .filter(item => item.name && item.name !== 'Unnamed' && item.name.length > 2 && item.distNum >= 2 && item.distNum <= 8);
+          .filter(item => item.name && item.name !== 'Unnamed' && item.name.length > 2 && item.distNum <= 5);
         
         if (items.length > 0) {
           return items.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating)).slice(0, 6);
@@ -128,22 +130,22 @@ const getNearbyPlaces = async (lat, lng, address) => {
   // Fallback: Real, exact local recommendations for Kodaikanal and Madurai
   if (isMdu) {
     return [
-      { name: "Murugan Idli Shop", type: "Restaurant", rating: "4.6", dist: "1.1 km", desc: "Famous for traditional soft idlis and tasty chutneys", mapLink: "https://www.google.com/maps/search/?api=1&query=Murugan+Idli+Shop+Madurai" },
-      { name: "Heritage Madurai", type: "Hotel", rating: "4.8", dist: "2.3 km", desc: "Premium heritage resort with grand swimming pool", mapLink: "https://www.google.com/maps/search/?api=1&query=Heritage+Madurai" },
-      { name: "Burma Mess", type: "Restaurant", rating: "4.5", dist: "0.8 km", desc: "Famous for local non-veg dishes & Chettinad flavor", mapLink: "https://www.google.com/maps/search/?api=1&query=Burma+Mess+Madurai" },
-      { name: "Courtyard by Marriott", type: "Hotel", rating: "4.7", dist: "1.5 km", desc: "Upscale modern luxury hotel with premium dining", mapLink: "https://www.google.com/maps/search/?api=1&query=Courtyard+by+Marriott+Madurai" },
-      { name: "Famous Jigarthanda", type: "Restaurant", rating: "4.7", dist: "0.5 km", desc: "Home of Madurai's authentic signature cold dessert", mapLink: "https://www.google.com/maps/search/?api=1&query=Famous+Jigarthanda+Madurai" },
-      { name: "Amma Mess", type: "Restaurant", rating: "4.4", dist: "1.9 km", desc: "Traditional South Indian spicy non-veg specialty", mapLink: "https://www.google.com/maps/search/?api=1&query=Amma+Mess+Madurai" }
+      { name: "Murugan Idli Shop", type: "VEG • SOUTH INDIAN", rating: "4.6", dist: "1.1 km", desc: "Famous for traditional soft idlis and tasty chutneys", mapLink: "https://www.google.com/maps/search/?api=1&query=Murugan+Idli+Shop+Madurai" },
+      { name: "Kumar Mess", type: "NON-VEG • CHETTINAD", rating: "4.5", dist: "2.3 km", desc: "Authentic Chettinad non-veg meals and biryani", mapLink: "https://www.google.com/maps/search/?api=1&query=Kumar+Mess+Madurai" },
+      { name: "Burma Mess", type: "NON-VEG • CHETTINAD", rating: "4.5", dist: "0.8 km", desc: "Famous for local non-veg dishes & Chettinad flavor", mapLink: "https://www.google.com/maps/search/?api=1&query=Burma+Mess+Madurai" },
+      { name: "Sree Sabarees", type: "VEG • SOUTH INDIAN", rating: "4.6", dist: "1.5 km", desc: "Premium pure veg south indian dining", mapLink: "https://www.google.com/maps/search/?api=1&query=Sree+Sabarees+Madurai" },
+      { name: "Famous Jigarthanda", type: "VEG • DESSERTS", rating: "4.7", dist: "0.5 km", desc: "Home of Madurai's authentic signature cold dessert", mapLink: "https://www.google.com/maps/search/?api=1&query=Famous+Jigarthanda+Madurai" },
+      { name: "Amma Mess", type: "NON-VEG • SOUTH INDIAN", rating: "4.4", dist: "1.9 km", desc: "Traditional South Indian spicy non-veg specialty", mapLink: "https://www.google.com/maps/search/?api=1&query=Amma+Mess+Madurai" }
     ];
   } else {
     // Default to Kodaikanal
     return [
-      { name: "Altaf's Cafe", type: "Restaurant", rating: "4.8", dist: "1.2 km", desc: "Famous for Middle Eastern dishes & beautiful valley views", mapLink: "https://www.google.com/maps/search/?api=1&query=Altafs+Cafe+Kodaikanal" },
-      { name: "The Carlton Hotel", type: "Hotel", rating: "4.7", dist: "0.5 km", desc: "Luxury 5-star heritage hotel by the Kodai lake side", mapLink: "https://www.google.com/maps/search/?api=1&query=The+Carlton+Kodaikanal" },
-      { name: "The Royal Tibet", type: "Restaurant", rating: "4.7", dist: "0.8 km", desc: "Famous for hot momos, thukpa and Tibetan noodles", mapLink: "https://www.google.com/maps/search/?api=1&query=The+Royal+Tibet+Kodaikanal" },
-      { name: "Sterling Kodai Lake", type: "Hotel", rating: "4.6", dist: "1.9 km", desc: "Premium English cottage-style lake resort", mapLink: "https://www.google.com/maps/search/?api=1&query=Sterling+Kodai+Lake" },
-      { name: "Muncheez", type: "Restaurant", rating: "4.6", dist: "1.5 km", desc: "Popular local rolls, woodfired pizza & quick bites", mapLink: "https://www.google.com/maps/search/?api=1&query=Muncheez+Kodaikanal" },
-      { name: "Cloud Street", type: "Restaurant", rating: "4.7", dist: "1.1 km", desc: "Amazing fresh woodfired pizzas & home-baked cakes", mapLink: "https://www.google.com/maps/search/?api=1&query=Cloud+Street+Kodaikanal" }
+      { name: "Altaf's Cafe", type: "NON-VEG • MIDDLE EASTERN", rating: "4.8", dist: "1.2 km", desc: "Famous for Middle Eastern dishes & beautiful valley views", mapLink: "https://www.google.com/maps/search/?api=1&query=Altafs+Cafe+Kodaikanal" },
+      { name: "Ten Degrees", type: "NON-VEG • CONTINENTAL", rating: "4.8", dist: "0.5 km", desc: "Premium dining with beautiful views", mapLink: "https://www.google.com/maps/search/?api=1&query=Ten+Degrees+Kodaikanal" },
+      { name: "The Royal Tibet", type: "NON-VEG • TIBETAN", rating: "4.7", dist: "0.8 km", desc: "Famous for hot momos, thukpa and Tibetan noodles", mapLink: "https://www.google.com/maps/search/?api=1&query=The+Royal+Tibet+Kodaikanal" },
+      { name: "Astoria Veg", type: "VEG • SOUTH INDIAN", rating: "4.5", dist: "1.9 km", desc: "Authentic south indian meals and tiffins", mapLink: "https://www.google.com/maps/search/?api=1&query=Astoria+Veg+Kodaikanal" },
+      { name: "Muncheez", type: "NON-VEG • FAST FOOD", rating: "4.6", dist: "1.5 km", desc: "Popular local rolls, woodfired pizza & quick bites", mapLink: "https://www.google.com/maps/search/?api=1&query=Muncheez+Kodaikanal" },
+      { name: "Cloud Street", type: "NON-VEG • ITALIAN", rating: "4.7", dist: "1.1 km", desc: "Amazing fresh woodfired pizzas & home-baked cakes", mapLink: "https://www.google.com/maps/search/?api=1&query=Cloud+Street+Kodaikanal" }
     ];
   }
 };
@@ -175,6 +177,7 @@ const Trips = () => {
 
   const [activeHotspotIndex, setActiveHotspotIndex] = useState(0);
   const [nearbyPlaces, setNearbyPlaces] = useState({});
+  const [activeChatProperty, setActiveChatProperty] = useState(null);
 
   useEffect(() => {
     const loadAllNearby = async () => {
@@ -668,6 +671,13 @@ const Trips = () => {
                                   style={{ flex: 1, padding: '16px 20px', background: '#EF4444', color: 'white', fontWeight: '800', fontSize: '15px', borderRadius: '12px', cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.2)' }}
                                 >
                                   👋 Check Out
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => setActiveChatProperty(booking.property)}
+                                  style={{ flex: 1, padding: '16px 20px', background: '#3B82F6', color: 'white', fontWeight: '800', fontSize: '15px', borderRadius: '12px', cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2)' }}
+                                >
+                                  <MessageCircle size={18} /> Message
                                 </button>
                                 <button 
                                   type="button"
@@ -1258,6 +1268,16 @@ const Trips = () => {
           </div>
         );
       })()}
+      {activeChatProperty && (
+        <ChatWidget 
+          propertyId={activeChatProperty._id} 
+          customerId={user._id} 
+          customerName={user.name} 
+          propertyName={activeChatProperty.name}
+          defaultOpen={true}
+          onClose={() => setActiveChatProperty(null)}
+        />
+      )}
     </div>
   );
 };

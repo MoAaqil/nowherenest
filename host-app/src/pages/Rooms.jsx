@@ -35,6 +35,8 @@ const Rooms = () => {
   // Form states
   const [category, setCategory] = useState('standard');
   const [price, setPrice] = useState('');
+  const [weekendPrice, setWeekendPrice] = useState('');
+  const [enableSurgePricing, setEnableSurgePricing] = useState(false);
   const [capacity, setCapacity] = useState('2');
   const [roomImagesList, setRoomImagesList] = useState([]);
   const [newRoomImageUrl, setNewRoomImageUrl] = useState('');
@@ -94,6 +96,8 @@ const Rooms = () => {
     setEditingRoom(null);
     setCategory('standard');
     setPrice('');
+    setWeekendPrice('');
+    setEnableSurgePricing(false);
     setCapacity('2');
     setSelectedAmenities([]);
     setRoomImagesList([]);
@@ -107,6 +111,8 @@ const Rooms = () => {
     setEditingRoom(room);
     setCategory(room.category);
     setPrice(room.price.toString());
+    setWeekendPrice(room.weekendPrice ? room.weekendPrice.toString() : '');
+    setEnableSurgePricing(room.enableSurgePricing || false);
     setCapacity(room.capacity.toString());
     setSelectedAmenities(room.amenities || []);
     
@@ -172,6 +178,8 @@ const Rooms = () => {
       propertyId: selectedPropertyId,
       category,
       price: parseFloat(price) || 0,
+      weekendPrice: parseFloat(weekendPrice) || 0,
+      enableSurgePricing,
       capacity: parseInt(capacity) || 2,
       amenities: selectedAmenities,
       images: finalImages.length > 0 ? finalImages : ['https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=800&q=80'],
@@ -385,6 +393,34 @@ const Rooms = () => {
                     onChange={e => setPrice(e.target.value)}
                     required 
                   />
+                </div>
+
+                <div className="form-group">
+                  <label>Weekend Price (Fri/Sat) (Optional)</label>
+                  <input 
+                    type="number" 
+                    className="form-control" 
+                    placeholder="e.g. 2000" 
+                    value={weekendPrice}
+                    onChange={e => setWeekendPrice(e.target.value)}
+                  />
+                  <small style={{ fontSize: '11px', color: 'var(--text-light)', marginTop: '4px', display: 'block' }}>Leave empty to use base price</small>
+                </div>
+
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '20px', padding: '15px', backgroundColor: 'var(--bg-light)', borderRadius: '8px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="surgeToggle"
+                    checked={enableSurgePricing}
+                    onChange={e => setEnableSurgePricing(e.target.checked)}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--primary-color)' }}
+                  />
+                  <label htmlFor="surgeToggle" style={{ margin: 0, fontWeight: '600', cursor: 'pointer' }}>
+                    Enable Auto-Surge Pricing (+15%)
+                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'normal', marginTop: '2px' }}>
+                      Automatically increase price when property occupancy &gt; 80%
+                    </span>
+                  </label>
                 </div>
               </div>
 

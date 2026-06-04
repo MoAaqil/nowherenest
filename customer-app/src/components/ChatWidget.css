@@ -1,0 +1,16 @@
+.chat-widget-wrapper { position: fixed; bottom: 20px; right: 20px; zIndex: 1000; font-family: inherit; } 
+@media (max-width: 768px) { 
+  .chat-widget-wrapper { 
+    bottom: 80px !important; 
+    right: 0 !important; 
+    left: 0 !important;
+    width: 100% !important; 
+  } 
+  .chat-widget-box { 
+    width: 100% !important; 
+    max-width: 100% !important; 
+    height: 70vh !important; 
+    border-radius: 16px 16px 0 0 !important; 
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15) !important;
+  } 
+}

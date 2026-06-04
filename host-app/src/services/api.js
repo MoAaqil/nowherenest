@@ -112,5 +112,14 @@ export const api = {
     getAll: () => fetchWithAuth('/vibes'),
     create: (vibeData) => fetchWithAuth('/vibes', { method: 'POST', body: vibeData }),
     delete: (id) => fetchWithAuth(`/vibes/${id}`, { method: 'DELETE' })
+  },
+
+  // Messages API
+  messages: {
+    getThreads: (propertyId) => fetchWithAuth(`/messages/${propertyId}/threads`),
+    get: (propertyId, customerId) => fetchWithAuth(`/messages/${propertyId}/${customerId}`),
+    send: (propertyId, customerId, text) => fetchWithAuth(`/messages/${propertyId}/${customerId}`, { method: 'POST', body: { text } }),
+    delete: (messageId) => fetchWithAuth(`/messages/${messageId}`, { method: 'DELETE' }),
+    clear: (propertyId, customerId) => fetchWithAuth(`/messages/${propertyId}/${customerId}/clear`, { method: 'DELETE' })
   }
 };

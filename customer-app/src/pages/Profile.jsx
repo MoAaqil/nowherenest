@@ -95,6 +95,7 @@ const Profile = () => {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [chatErrorMsg, setChatErrorMsg] = useState('');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -126,10 +127,12 @@ const Profile = () => {
   }, [user]);
 
   // Fetch real messages for a booking
-  const fetchMessages = async (bookingId) => {
+  const fetchMessages = async (booking) => {
     setMessagesLoading(true);
     try {
-      const res = await api.messages.getByBooking(bookingId);
+      const propertyId = booking.property?._id || booking.property;
+      const customerId = user._id;
+      const res = await api.messages.get(propertyId, customerId);
       setMessages(res.messages || []);
       // Scroll to bottom
       setTimeout(() => {
@@ -146,7 +149,7 @@ const Profile = () => {
   const handleOpenMessaging = (booking) => {
     setActiveMessagingBooking(booking);
     setChatInput('');
-    fetchMessages(booking._id);
+    fetchMessages(booking);
   };
 
   const handleCloseMessaging = () => {
@@ -221,15 +224,18 @@ const Profile = () => {
     if (!chatInput.trim() || !activeMessagingBooking) return;
     setSendingMessage(true);
     try {
-      const res = await api.messages.send(activeMessagingBooking._id, chatInput.trim());
+      const propertyId = activeMessagingBooking.property?._id || activeMessagingBooking.property;
+      const customerId = user._id;
+      const res = await api.messages.send(propertyId, customerId, chatInput.trim());
       setMessages(prev => [...prev, res.message]);
       setChatInput('');
+      setChatErrorMsg('');
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 50);
     } catch (err) {
       console.error('Failed to send message:', err);
-      showToast('Failed to send message. Please try again.');
+      setChatErrorMsg(err.message || 'Failed to send message. Please try again.');
     } finally {
       setSendingMessage(false);
     }
@@ -833,13 +839,35 @@ const Profile = () => {
                     Booking #{activeMessagingBooking._id?.slice(-6)?.toUpperCase()}
                   </span>
                 </div>
-                <button onClick={handleCloseMessaging} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}>
-                  <X size={16} />
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={async () => {
+                    if (window.confirm('Clear all messages for this stay?')) {
+                      try {
+                        const propId = activeMessagingBooking.property?._id || activeMessagingBooking.property;
+                        await api.messages.clear(propId, user._id);
+                        setMessages([]); // manually clear UI
+                      } catch (e) {
+                        console.error('Failed to clear chat', e);
+                      }
+                    }
+                  }} style={{ background: 'none', border: 'none', color: '#CBD5E1', cursor: 'pointer', fontSize: '11px' }}>
+                    Clear Chat
+                  </button>
+                  <button onClick={handleCloseMessaging} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}>
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
 
               {/* Messages list */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#F8FAFC' }}>
+                {chatErrorMsg && (
+                  <div style={{ backgroundColor: '#FEE2E2', color: '#B91C1C', padding: '12px', borderRadius: '8px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', border: '1px solid #FCA5A5', boxShadow: '0 4px 6px -1px rgba(239,68,68,0.1)' }}>
+                    <span>{chatErrorMsg}</span>
+                    <button onClick={() => setChatErrorMsg('')} style={{ background: 'transparent', border: 'none', color: '#B91C1C', cursor: 'pointer', padding: '0 0 0 8px' }}><X size={16} /></button>
+                  </div>
+                )}
+                
                 {messagesLoading ? (
                   <div style={{ textAlign: 'center', padding: '40px 0', color: '#94A3B8', fontSize: '13px' }}>Loading messages...</div>
                 ) : messages.length === 0 ? (
@@ -851,7 +879,7 @@ const Profile = () => {
                   messages.map(msg => {
                     const isMe = msg.sender?._id === user?._id || msg.sender === user?._id;
                     return (
-                      <div key={msg._id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                      <div key={msg._id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', alignItems: 'center', gap: '8px', flexDirection: isMe ? 'row-reverse' : 'row' }}>
                         <div style={{
                           maxWidth: '75%', padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                           background: isMe ? '#0A3B2A' : 'white',
@@ -869,6 +897,24 @@ const Profile = () => {
                             {new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
+                        {isMe && (
+                          <button 
+                            onClick={async () => {
+                              if (window.confirm('Unsend this message?')) {
+                                try {
+                                  await api.messages.delete(msg._id);
+                                  setMessages(prev => prev.filter(m => m._id !== msg._id)); // UI remove
+                                } catch (e) {
+                                  console.error('Failed to unsend', e);
+                                }
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px', opacity: 0.6 }}
+                            title="Unsend message"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                          </button>
+                        )}
                       </div>
                     );
                   })
@@ -876,32 +922,45 @@ const Profile = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message input */}
-              <form onSubmit={handleSendMessage} style={{ padding: '12px 16px', borderTop: '1px solid #E2E8F0', display: 'flex', gap: '8px', background: 'white', borderRadius: '0 0 16px 16px' }}>
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  placeholder="Type a message to your host..."
-                  style={{
-                    flex: 1, padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '10px',
-                    fontSize: '13px', outline: 'none', background: '#F8FAFC'
-                  }}
-                  disabled={sendingMessage}
-                />
-                <button
-                  type="submit"
-                  disabled={!chatInput.trim() || sendingMessage}
-                  style={{
-                    width: '42px', height: '42px', background: '#0A3B2A', color: 'white',
-                    border: 'none', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: chatInput.trim() && !sendingMessage ? 'pointer' : 'not-allowed',
-                    opacity: chatInput.trim() && !sendingMessage ? 1 : 0.5, transition: 'all 0.2s'
-                  }}
-                >
-                  <Send size={16} />
-                </button>
-              </form>
+              {activeMessagingBooking.status === 'checked_out' || activeMessagingBooking.status === 'cancelled' ? (
+                <div style={{
+                  padding: '12px',
+                  textAlign: 'center',
+                  backgroundColor: '#F1F5F9',
+                  color: '#64748B',
+                  fontSize: '13px',
+                  borderTop: '1px solid #E2E8F0',
+                  fontWeight: '600'
+                }}>
+                  Chat is disabled after checkout.
+                </div>
+              ) : (
+                <form onSubmit={handleSendMessage} style={{ padding: '12px 16px', borderTop: '1px solid #E2E8F0', display: 'flex', gap: '8px', background: 'white', borderRadius: '0 0 16px 16px' }}>
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    placeholder="Type a message to your host..."
+                    style={{
+                      flex: 1, padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '10px',
+                      fontSize: '13px', outline: 'none', background: '#F8FAFC'
+                    }}
+                    disabled={sendingMessage}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || sendingMessage}
+                    style={{
+                      width: '42px', height: '42px', background: '#0A3B2A', color: 'white',
+                      border: 'none', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: chatInput.trim() && !sendingMessage ? 'pointer' : 'not-allowed',
+                      opacity: chatInput.trim() && !sendingMessage ? 1 : 0.5, transition: 'all 0.2s'
+                    }}
+                  >
+                    <Send size={16} />
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         )}

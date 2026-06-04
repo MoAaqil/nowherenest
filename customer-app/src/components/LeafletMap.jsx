@@ -298,34 +298,7 @@ const LeafletMap = ({ listings = [], center = [9.5929, 76.4227], zoom = 11, onSe
       ).addTo(mapRef.current);
     }
 
-    // Custom themed Pin Icon
-    const customPinIcon = window.L.divIcon({
-      className: 'custom-map-pin',
-      html: `
-        <div style="
-          background-color: #0A3B2A; 
-          width: 32px; 
-          height: 32px; 
-          border-radius: 50% 50% 50% 0; 
-          transform: rotate(-45deg); 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          border: 2px solid white; 
-          box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-        ">
-          <div style="
-            background-color: #A3E635; 
-            width: 12px; 
-            height: 12px; 
-            border-radius: 50%;
-          "></div>
-        </div>
-      `,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -32]
-    });
+    // We will create the icon inside the loop to include the price directly on the pin
 
     // Filter listings based on map state selections
     const filteredListings = listings.filter(item => {
@@ -347,9 +320,39 @@ const LeafletMap = ({ listings = [], center = [9.5929, 76.4227], zoom = 11, onSe
     // Add Markers to map
     filteredListings.forEach(listing => {
       if (listing.location?.lat && listing.location?.lng) {
+        const priceVal = (listing.price !== undefined && listing.price !== null) ? listing.price : 0;
+        const priceFormatted = `₹${priceVal.toLocaleString('en-IN')}`;
+
+        const airbnbStyleIcon = window.L.divIcon({
+          className: 'custom-map-pin-airbnb',
+          html: `
+            <div style="
+              background-color: white; 
+              color: black;
+              font-weight: bold;
+              font-family: inherit;
+              font-size: 14px;
+              padding: 4px 8px; 
+              border-radius: 20px; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              border: 1px solid #ccc; 
+              box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+              white-space: nowrap;
+              transition: transform 0.2s;
+            ">
+              ${priceFormatted}
+            </div>
+          `,
+          iconSize: [60, 24],
+          iconAnchor: [30, 12],
+          popupAnchor: [0, -12]
+        });
+
         const marker = window.L.marker(
           [listing.location.lat, listing.location.lng],
-          { icon: customPinIcon }
+          { icon: airbnbStyleIcon }
         ).addTo(mapRef.current);
 
         if (onSelectCoords) {

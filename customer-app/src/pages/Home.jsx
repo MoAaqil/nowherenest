@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { Search, MapPin, Star, Flame, Compass, ShieldAlert, Navigation, SlidersHorizontal, X, RefreshCw, Mountain, Umbrella, Building, Home as HomeIcon, Map } from 'lucide-react';
+import { Search, MapPin, Star, Flame, Compass, ShieldAlert, Navigation, SlidersHorizontal, X, RefreshCw, Mountain, Umbrella, Building, Home as HomeIcon, Map, List } from 'lucide-react';
 import LeafletMap from '../components/LeafletMap';
 import './Home.css';
 import { formatPrice } from '../utils/currency';
@@ -146,6 +146,7 @@ const PAYMENT_OPTIONS = [
 
 const Home = () => {
   const [listings, setListings] = useState([]);
+  const [showMapView, setShowMapView] = useState(false);
   const [language, setLanguage] = useState(localStorage.getItem('language') || 'English');
   const [currencyChanged, setCurrencyChanged] = useState(0);
 
@@ -1340,6 +1341,14 @@ const Home = () => {
                 </button>
               )}
             </div>
+          ) : showMapView ? (
+            <div style={{ height: '75vh', width: '100%', borderRadius: '16px', overflow: 'hidden', marginTop: '20px', zIndex: 1, position: 'relative' }}>
+              <LeafletMap 
+                listings={listings} 
+                center={[userLat, userLng]} 
+                zoom={10} 
+              />
+            </div>
           ) : (
             <div className="listings-scroll-grid">
               {listings.map(listing => (
@@ -1505,6 +1514,45 @@ const Home = () => {
           <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=80" alt="Nature stay" />
         </div>
       </section>
+      {/* Floating Map Toggle Button */}
+      {!isSearching && !error && listings.length > 0 && (
+        <button 
+          onClick={() => setShowMapView(!showMapView)}
+          style={{
+            position: 'fixed',
+            bottom: '30px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#222222',
+            color: 'white',
+            border: 'none',
+            borderRadius: '24px',
+            padding: '14px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontWeight: '600',
+            fontSize: '14px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            cursor: 'pointer',
+            zIndex: 999,
+            transition: 'transform 0.2s'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1.05)'}
+          onMouseOut={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1)'}
+        >
+          {showMapView ? (
+            <>
+              <List size={18} /> Show list
+            </>
+          ) : (
+            <>
+              <Map size={18} /> Show map
+            </>
+          )}
+        </button>
+      )}
+
     </div>
   );
 };

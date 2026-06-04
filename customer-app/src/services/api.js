@@ -57,8 +57,10 @@ export const api = {
 
   // Messages API
   messages: {
-    getByBooking: (bookingId) => fetchWithAuth(`/messages/${bookingId}`),
-    send: (bookingId, text) => fetchWithAuth(`/messages/${bookingId}`, { method: 'POST', body: { text } }),
+    get: (propertyId, customerId) => fetchWithAuth(`/messages/${propertyId}/${customerId}`),
+    send: (propertyId, customerId, text) => fetchWithAuth(`/messages/${propertyId}/${customerId}`, { method: 'POST', body: { text } }),
+    delete: (messageId) => fetchWithAuth(`/messages/${messageId}`, { method: 'DELETE' }),
+    clear: (propertyId, customerId) => fetchWithAuth(`/messages/${propertyId}/${customerId}/clear`, { method: 'DELETE' })
   },
 
   // Listings API

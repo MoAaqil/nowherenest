@@ -13,6 +13,8 @@ const roomSchema = new mongoose.Schema({
     default: 'standard' 
   },
   price: { type: Number, required: true }, // price per night
+  weekendPrice: { type: Number, default: 0 }, // price for Fri/Sat nights
+  enableSurgePricing: { type: Boolean, default: false }, // auto-surge when occupancy > 80%
   capacity: { type: Number, required: true, default: 2 }, // guest occupancy limit
   amenities: { type: [String], default: [] }, // ac, ac_tv, balcony, minibar
   images: { type: [String], default: [] },

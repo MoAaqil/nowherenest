@@ -15,7 +15,8 @@ import {
   User, 
   Menu,
   X,
-  Video
+  Video,
+  MessageSquare
 } from 'lucide-react';
 import './Navbar.css';
 
@@ -112,6 +113,10 @@ const Navbar = () => {
           <Link to="/finance" className={`nav-item ${isActive('/finance') ? 'active' : ''}`} onClick={closeSidebar}>
             <IndianRupee size={18} />
             <span>Finance</span>
+          </Link>
+          <Link to="/messages" className={`nav-item ${isActive('/messages') ? 'active' : ''}`} onClick={closeSidebar}>
+            <MessageSquare size={18} />
+            <span>Messages</span>
           </Link>
           <Link to="/settings" className={`nav-item ${isActive('/settings') ? 'active' : ''}`} onClick={closeSidebar}>
             <Settings size={18} />
