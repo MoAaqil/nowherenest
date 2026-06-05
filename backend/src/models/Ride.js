@@ -18,8 +18,7 @@ const rideSchema = new mongoose.Schema({
   },
   booking: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking',
-    required: true
+    ref: 'Booking'
   },
   pickupAddress: { type: String, required: true },
   destinationAddress: { type: String, required: true },

@@ -25,9 +25,12 @@ const drivers = [
 exports.createRide = async (req, res) => {
   const { bookingId, pickupAddress, destinationAddress, pickupCoords, destinationCoords, rideType } = req.body;
   try {
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'Reference stay booking not found' });
+    let booking = null;
+    if (bookingId) {
+      booking = await Booking.findById(bookingId);
+      if (!booking) {
+        return res.status(404).json({ success: false, message: 'Reference stay booking not found' });
+      }
     }
 
     const dist = calculateDistance(
@@ -53,15 +56,17 @@ exports.createRide = async (req, res) => {
 
     const fare = Math.round(baseFare + (distanceKm * ratePerKm));
 
-    const ride = await Ride.create({
+    const rideData = {
       customer: req.user.id,
-      booking: bookingId,
       pickupAddress,
       destinationAddress,
       pickupCoords,
       destinationCoords,
       fare
-    });
+    };
+    if (bookingId) rideData.booking = bookingId;
+
+    const ride = await Ride.create(rideData);
 
     res.status(201).json({ success: true, ride, distanceKm });
   } catch (error) {

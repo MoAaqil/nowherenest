@@ -46,12 +46,11 @@ const CabBooking = () => {
   const [destinationCoords, setDestinationCoords] = useState({ lat: 9.5929, lng: 76.4227 }); // Stay coords
 
   useEffect(() => {
-    if (!bookingId) {
-      setError('A valid stay booking reference is required to book a nearby ride.');
+    if (bookingId) {
+      fetchBookingDetails();
+    } else {
       setLoading(false);
-      return;
     }
-    fetchBookingDetails();
   }, [bookingId]);
 
   const fetchBookingDetails = async () => {
@@ -148,13 +147,24 @@ const CabBooking = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    let finalDestCoords = destinationCoords;
+    if (!bookingId) {
+      // Mock coordinates based on pickup to simulate a destination if free-text is used
+      finalDestCoords = {
+        lat: pickupCoords.lat + (Math.random() - 0.5) * 0.05,
+        lng: pickupCoords.lng + (Math.random() - 0.5) * 0.05
+      };
+      setDestinationCoords(finalDestCoords);
+    }
+
     try {
       const res = await api.rides.create({
-        bookingId,
+        bookingId: bookingId || null,
         pickupAddress,
         destinationAddress,
         pickupCoords,
-        destinationCoords,
+        destinationCoords: finalDestCoords,
         rideType
       });
 
@@ -205,7 +215,7 @@ const CabBooking = () => {
         driverMarker.current.setLatLng([pickupCoords.lat, pickupCoords.lng]);
         driverMarker.current.bindPopup('🚕 Driver arrived! Trip has started.').openPopup();
         
-        // Step C: Animate and move along interpolation path towards destination (stay)
+        // Step C: Animate and move along interpolation path towards destination
         setTimeout(async () => {
           setSimulationStatus('moving');
           const pathRes = await api.rides.getRoutePath(rideId); // fetch interpolation path
@@ -239,7 +249,7 @@ const CabBooking = () => {
       const res = await api.rides.getById(rideId);
       setRide(res.ride);
       setSimulationStatus('completed');
-      setSuccessMsg('You have successfully arrived at your Stay destination! Enjoy your nest.');
+      setSuccessMsg('You have successfully arrived at your destination! Enjoy your day.');
       
       if (driverMarker.current) {
         driverMarker.current.bindPopup('🎉 Arrived! Trip Completed.').openPopup();
@@ -254,7 +264,7 @@ const CabBooking = () => {
       <div className="flex-between cab-header">
         <div>
           <h2>Nearby Cab Booking (Rapido Style)</h2>
-          {booking && <p>Dispatching ride coordinates to <strong>{booking.listing.title}</strong></p>}
+          {booking ? <p>Dispatching ride coordinates to <strong>{booking.listing.title}</strong></p> : <p>Book a local ride anywhere</p>}
         </div>
         <Link to="/" className="btn btn-outline btn-small">Cancel Ride</Link>
       </div>
@@ -285,14 +295,20 @@ const CabBooking = () => {
               </div>
 
               <div className="form-group">
-                <label>Destination Stay (Locked)</label>
+                <label>{bookingId ? 'Destination Stay (Locked)' : 'Where to?'}</label>
                 <div className="input-with-icon">
                   <Navigation size={16} />
                   <input 
                     type="text" 
                     className="form-control" 
                     value={destinationAddress}
-                    disabled
+                    onChange={e => {
+                      setDestinationAddress(e.target.value);
+                      if (!bookingId) setDistance((Math.random() * 5 + 1)); // mock distance changes for UI
+                    }}
+                    placeholder="Enter drop location"
+                    required
+                    disabled={!!bookingId}
                   />
                 </div>
               </div>
