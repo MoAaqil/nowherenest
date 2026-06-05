@@ -810,7 +810,14 @@ const Trips = () => {
                                   ))}
                                 </div>
                               </div>
-                              <div className="dining-grid" style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+                              <div className="dining-grid" style={{ 
+                                maxHeight: '420px', 
+                                overflowY: 'auto', 
+                                paddingRight: '4px',
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                                gap: '12px'
+                              }}>
                                 {(nearbyPlaces[booking._id] || [
                                   // Quick default preview based on location
                                   ...((booking.property?.address || '').toLowerCase().includes('madurai') ? [
@@ -825,27 +832,68 @@ const Trips = () => {
                                     { name: "Altaf's Cafe", type: "NON-VEG • MIDDLE EASTERN", rating: "4.7", dist: "6.2 km", desc: "Middle eastern dishes & mountain views", mapLink: "https://www.google.com/maps/search/?api=1&query=Altafs+Cafe+Kodaikanal" }
                                   ])
                                 ])
-                                .filter(place => diningFilter === 'ALL' || (place.type || '').toUpperCase().includes(diningFilter))
-                                .map((place, pIdx) => (
-                                  <div 
-                                    key={pIdx} 
-                                    className="dining-card"
-                                    onClick={() => window.open(place.mapLink, '_blank')}
-                                    style={{ cursor: 'pointer' }}
-                                  >
-                                    <div className="dining-card-header">
-                                      <span className="dining-card-name">{place.name}</span>
-                                      <span className="dining-card-rating">★ {place.rating}</span>
+                                .filter(place => diningFilter === 'ALL' || (place.type || '').toUpperCase().startsWith(diningFilter))
+                                .map((place, pIdx) => {
+                                  const typeStr = place.type || '';
+                                  const isVeg = typeStr.startsWith('VEG');
+                                  const parts = typeStr.split(' • ');
+                                  const mainType = parts[0];
+                                  const cuisine = parts[1] || '';
+                                  return (
+                                    <div 
+                                      key={pIdx} 
+                                      className="dining-card"
+                                      onClick={() => window.open(place.mapLink, '_blank')}
+                                      style={{ 
+                                        cursor: 'pointer',
+                                        background: '#FFFFFF',
+                                        border: '1px solid #E2E8F0',
+                                        borderRadius: '12px',
+                                        padding: '16px',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '8px'
+                                      }}
+                                    >
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <span style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>{place.name}</span>
+                                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#D97706', display: 'flex', alignItems: 'center', gap: '2px' }}>★ {place.rating}</span>
+                                      </div>
+                                      
+                                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                                        <span style={{
+                                          fontSize: '10px',
+                                          fontWeight: '800',
+                                          padding: '2px 6px',
+                                          borderRadius: '4px',
+                                          backgroundColor: isVeg ? '#DCFCE7' : '#FEE2E2',
+                                          color: isVeg ? '#166534' : '#991B1B'
+                                        }}>
+                                          {mainType}
+                                        </span>
+                                        {cuisine && (
+                                          <span style={{
+                                            fontSize: '10px',
+                                            fontWeight: '700',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            backgroundColor: '#F1F5F9',
+                                            color: '#475569'
+                                          }}>
+                                            {cuisine}
+                                          </span>
+                                        )}
+                                      </div>
+                                      
+                                      <p style={{ fontSize: '12px', color: '#64748B', margin: 0, lineHeight: '1.4' }}>{place.desc}</p>
+                                      
+                                      <div style={{ marginTop: 'auto', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: '700', color: '#0A3B2A' }}>📍 {place.dist}</span>
+                                      </div>
                                     </div>
-                                    <div className="dining-card-meta">
-                                      <span className="dining-card-tag" style={{ color: place.type === 'Hotel' ? '#D97706' : '#0A3B2A' }}>
-                                        {place.type === 'Hotel' ? '🏨 Hotel' : '🍽️ ' + place.type}
-                                      </span>
-                                      <span className="dining-card-dist">📍 {place.dist}</span>
-                                    </div>
-                                    <p className="dining-card-desc">{place.desc}</p>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
 
