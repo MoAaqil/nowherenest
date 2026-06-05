@@ -294,6 +294,92 @@ exports.createBooking = async (req, res) => {
   }
 };
 
+// Create a Manual Booking (Walk-in / Host initiated)
+exports.createManualBooking = async (req, res) => {
+  const { propertyId, roomId, startDate, endDate, guestName, guestPhone, noteToOwner } = req.body;
+
+  try {
+    // 1. Verify user is owner, staff, or admin
+    if (req.user.role !== 'owner' && req.user.role !== 'staff' && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only hosts can create manual bookings' });
+    }
+
+    if (!propertyId || !roomId || !guestName || !startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'Missing required manual booking fields' });
+    }
+
+    const property = await Property.findById(propertyId);
+    const room = await Room.findById(roomId);
+
+    if (!property || !room) {
+      return res.status(404).json({ success: false, message: 'Property or Room not found' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start >= end) {
+      return res.status(400).json({ success: false, message: 'Checkout date must be after check-in date' });
+    }
+
+    const requestedDates = getDatesInRange(start, end);
+    const roomBlockedDatesStr = room.blockedDates.map(d => new Date(d).toDateString());
+    const isDateBlocked = requestedDates.some(d => roomBlockedDatesStr.includes(d.toDateString()));
+    if (isDateBlocked) {
+      return res.status(400).json({ success: false, message: 'Selected room is not available for these dates' });
+    }
+
+    let baseAmount = 0;
+    let dCurr = new Date(start);
+    while (dCurr < end) {
+      const dayOfWeek = dCurr.getDay();
+      if ((dayOfWeek === 5 || dayOfWeek === 6) && room.weekendPrice && room.weekendPrice > 0) {
+        baseAmount += room.weekendPrice;
+      } else {
+        baseAmount += room.price;
+      }
+      dCurr.setDate(dCurr.getDate() + 1);
+    }
+    if (baseAmount === 0) baseAmount = room.price;
+
+    const totalAmount = baseAmount;
+    const rateEnv = parseFloat(process.env.COMMISSION_RATE) || 0.08;
+    const commissionRate = Math.min(Math.max(rateEnv, 0.05), 0.12);
+    const commissionAmount = Math.round(totalAmount * commissionRate);
+    const ownerAmount = totalAmount - commissionAmount;
+
+    const checkInOTP = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const booking = await Booking.create({
+      // no customer ID, just guestName and Phone
+      guestName,
+      guestPhone,
+      property: property._id,
+      room: room._id,
+      startDate: start,
+      endDate: end,
+      baseAmount,
+      totalAmount,
+      commissionAmount,
+      ownerAmount,
+      checkInOTP,
+      status: 'confirmed',
+      paymentStatus: 'paid', // Mark as paid since it's manual/cash
+      noteToOwner: noteToOwner || ''
+    });
+
+    room.blockedDates.push(...requestedDates);
+    await room.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Manual Booking created successfully',
+      booking
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Get Bookings for Customers
 exports.getBookings = async (req, res) => {
   try {

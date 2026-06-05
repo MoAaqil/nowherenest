@@ -71,6 +71,7 @@ export const api = {
 
   // Bookings / Reservations API
   bookings: {
+    createManual: (bookingData) => fetchWithAuth('/bookings/manual', { method: 'POST', body: bookingData }),
     getOwnerBookings: () => fetchWithAuth('/bookings/owner'),
     getById: (id) => fetchWithAuth(`/bookings/${id}`),
     verifyOTP: (id, otp) => fetchWithAuth(`/bookings/${id}/verify-otp`, { method: 'POST', body: { otp } }),

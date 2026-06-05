@@ -4,9 +4,10 @@ const bookingSchema = new mongoose.Schema({
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
     index: true
   },
+  guestName: { type: String, default: '' },
+  guestPhone: { type: String, default: '' },
   listing: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Listing',
