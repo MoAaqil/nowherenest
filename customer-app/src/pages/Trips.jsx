@@ -178,6 +178,7 @@ const Trips = () => {
   const [activeHotspotIndex, setActiveHotspotIndex] = useState(0);
   const [nearbyPlaces, setNearbyPlaces] = useState({});
   const [activeChatProperty, setActiveChatProperty] = useState(null);
+  const [diningFilter, setDiningFilter] = useState('ALL'); // 'ALL' | 'VEG' | 'NON-VEG'
 
   useEffect(() => {
     const loadAllNearby = async () => {
@@ -783,24 +784,49 @@ const Trips = () => {
 
                             {/* Section 3: Nearby Recommendations (Stays & Dining) */}
                             <div className="guide-dining" style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1.5px solid #E2E8F0' }}>
-                              <span style={{ fontSize: '11px', fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '12px' }}>
-                                📍 Nearby Local Dining &amp; Restaurants (Map Verified)
-                              </span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <span style={{ fontSize: '11px', fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                  📍 Nearby Local Dining (Map Verified)
+                                </span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  {['ALL', 'VEG', 'NON-VEG'].map(f => (
+                                    <button
+                                      key={f}
+                                      onClick={() => setDiningFilter(f)}
+                                      style={{
+                                        padding: '4px 8px',
+                                        fontSize: '10px',
+                                        fontWeight: '700',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        backgroundColor: diningFilter === f ? '#0A3B2A' : '#F1F5F9',
+                                        color: diningFilter === f ? 'white' : '#64748B',
+                                        transition: 'all 0.2s'
+                                      }}
+                                    >
+                                      {f}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
                               <div className="dining-grid" style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
                                 {(nearbyPlaces[booking._id] || [
                                   // Quick default preview based on location
                                   ...((booking.property?.address || '').toLowerCase().includes('madurai') ? [
-                                    { name: "Amma Mess", type: "Restaurant", rating: "4.8", dist: "2.5 km", desc: "Famous for traditional non-veg meals", mapLink: "https://www.google.com/maps/search/?api=1&query=Amma+Mess+Madurai" },
-                                    { name: "Sree Sabarees", type: "Restaurant", rating: "4.5", dist: "3.2 km", desc: "Premium pure veg south indian dining", mapLink: "https://www.google.com/maps/search/?api=1&query=Sree+Sabarees+Madurai" },
-                                    { name: "Phil's Bistro", type: "Restaurant", rating: "4.7", dist: "5.1 km", desc: "Authentic Italian and Continental dishes", mapLink: "https://www.google.com/maps/search/?api=1&query=Phils+Bistro+Madurai" },
-                                    { name: "Bistro 1427", type: "Restaurant", rating: "4.4", dist: "4.8 km", desc: "Cozy cafe with great burgers and shakes", mapLink: "https://www.google.com/maps/search/?api=1&query=Bistro+1427+Madurai" }
+                                    { name: "Amma Mess", type: "NON-VEG • SOUTH INDIAN", rating: "4.8", dist: "2.5 km", desc: "Famous for traditional non-veg meals", mapLink: "https://www.google.com/maps/search/?api=1&query=Amma+Mess+Madurai" },
+                                    { name: "Sree Sabarees", type: "VEG • SOUTH INDIAN", rating: "4.5", dist: "3.2 km", desc: "Premium pure veg south indian dining", mapLink: "https://www.google.com/maps/search/?api=1&query=Sree+Sabarees+Madurai" },
+                                    { name: "Phil's Bistro", type: "NON-VEG • CONTINENTAL", rating: "4.7", dist: "5.1 km", desc: "Authentic Italian and Continental dishes", mapLink: "https://www.google.com/maps/search/?api=1&query=Phils+Bistro+Madurai" },
+                                    { name: "Bistro 1427", type: "NON-VEG • CAFE", rating: "4.4", dist: "4.8 km", desc: "Cozy cafe with great burgers and shakes", mapLink: "https://www.google.com/maps/search/?api=1&query=Bistro+1427+Madurai" }
                                   ] : [
-                                    { name: "Ten Degrees", type: "Restaurant", rating: "4.8", dist: "2.5 km", desc: "Premium dining with beautiful views", mapLink: "https://www.google.com/maps/search/?api=1&query=Ten+Degrees+Kodaikanal" },
-                                    { name: "Muncheez", type: "Restaurant", rating: "4.6", dist: "3.2 km", desc: "Great spot for pizzas, burgers, and rolls", mapLink: "https://www.google.com/maps/search/?api=1&query=Muncheez+Kodaikanal" },
-                                    { name: "Astoria Veg", type: "Restaurant", rating: "4.5", dist: "4.1 km", desc: "Authentic south indian meals", mapLink: "https://www.google.com/maps/search/?api=1&query=Astoria+Veg+Kodaikanal" },
-                                    { name: "Altaf's Cafe", type: "Restaurant", rating: "4.7", dist: "6.2 km", desc: "Middle eastern dishes & mountain views", mapLink: "https://www.google.com/maps/search/?api=1&query=Altafs+Cafe+Kodaikanal" }
+                                    { name: "Ten Degrees", type: "NON-VEG • CONTINENTAL", rating: "4.8", dist: "2.5 km", desc: "Premium dining with beautiful views", mapLink: "https://www.google.com/maps/search/?api=1&query=Ten+Degrees+Kodaikanal" },
+                                    { name: "Muncheez", type: "NON-VEG • FAST FOOD", rating: "4.6", dist: "3.2 km", desc: "Great spot for pizzas, burgers, and rolls", mapLink: "https://www.google.com/maps/search/?api=1&query=Muncheez+Kodaikanal" },
+                                    { name: "Astoria Veg", type: "VEG • SOUTH INDIAN", rating: "4.5", dist: "4.1 km", desc: "Authentic south indian meals", mapLink: "https://www.google.com/maps/search/?api=1&query=Astoria+Veg+Kodaikanal" },
+                                    { name: "Altaf's Cafe", type: "NON-VEG • MIDDLE EASTERN", rating: "4.7", dist: "6.2 km", desc: "Middle eastern dishes & mountain views", mapLink: "https://www.google.com/maps/search/?api=1&query=Altafs+Cafe+Kodaikanal" }
                                   ])
-                                ]).map((place, pIdx) => (
+                                ])
+                                .filter(place => diningFilter === 'ALL' || (place.type || '').toUpperCase().includes(diningFilter))
+                                .map((place, pIdx) => (
                                   <div 
                                     key={pIdx} 
                                     className="dining-card"
