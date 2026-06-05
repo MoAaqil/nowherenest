@@ -10,11 +10,13 @@ const {
   submitReview,
   extendBooking,
   updateBookingUsp,
-  cancelBooking
+  cancelBooking,
+  createManualBooking
 } = require('../controllers/bookingController');
 
 const { protect } = require('../middleware/auth');
 
+router.post('/manual', protect, createManualBooking);
 router.post('/', protect, createBooking);
 router.get('/customer', protect, getBookings);
 router.get('/owner', protect, getOwnerBookings);

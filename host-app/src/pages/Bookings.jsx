@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { CalendarCheck, ShieldAlert, X, CheckCircle, LogOut } from 'lucide-react';
+import { CalendarCheck, ShieldAlert, X, Calendar as CalendarIcon, List as ListIcon, Plus } from 'lucide-react';
+import CalendarView from '../components/CalendarView';
 import './Bookings.css';
 
 const Bookings = () => {
@@ -17,6 +18,18 @@ const Bookings = () => {
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
+
+  // View Mode
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
+
+  // Manual Booking Modal
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [properties, setProperties] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [manualForm, setManualForm] = useState({
+    guestName: '', guestPhone: '', propertyId: '', roomId: '', startDate: '', endDate: '', noteToOwner: ''
+  });
+  const [manualLoading, setManualLoading] = useState(false);
 
   // Experience Schedules state: { [bookingId-uspId]: { date: string, status: string } }
   const [schedules, setSchedules] = useState({});
@@ -55,7 +68,48 @@ const Bookings = () => {
 
   useEffect(() => {
     fetchBookings();
+    fetchProperties();
   }, []);
+
+  const fetchProperties = async () => {
+    try {
+      const res = await api.properties.getOwnerProperties();
+      setProperties(res.properties);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handlePropertyChange = async (e) => {
+    const propId = e.target.value;
+    setManualForm({ ...manualForm, propertyId: propId, roomId: '' });
+    if (propId) {
+      try {
+        const res = await api.rooms.getRoomsByProperty(propId);
+        setRooms(res.rooms || []);
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      setRooms([]);
+    }
+  };
+
+  const handleCreateManualBooking = async (e) => {
+    e.preventDefault();
+    setManualLoading(true);
+    try {
+      await api.bookings.createManual(manualForm);
+      setShowManualModal(false);
+      setManualForm({ guestName: '', guestPhone: '', propertyId: '', roomId: '', startDate: '', endDate: '', noteToOwner: '' });
+      fetchBookings();
+      alert('Manual booking created successfully!');
+    } catch (err) {
+      alert(err.message || 'Failed to create booking');
+    } finally {
+      setManualLoading(false);
+    }
+  };
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -112,13 +166,36 @@ const Bookings = () => {
 
   return (
     <div className="container bookings-page">
-      <section className="flex-between page-header-row flex-wrap gap-12">
+      <section className="flex-between page-header-row flex-wrap gap-12" style={{ marginBottom: '24px' }}>
         <div>
           <h2>Manage Reservations</h2>
           <p className="subtitle">Verify digital arrival check-in OTP keys and monitor stay cycles</p>
         </div>
 
-        <div className="filter-toggles flex">
+        <div className="flex gap-12 align-center">
+          <button onClick={() => setShowManualModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={16} /> New Booking
+          </button>
+          
+          <div className="view-toggle" style={{ display: 'flex', background: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
+            <button 
+              onClick={() => setViewMode('list')} 
+              style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '6px', background: viewMode === 'list' ? 'white' : 'transparent', border: 'none', boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: viewMode === 'list' ? '600' : '500', color: viewMode === 'list' ? '#0F172A' : '#64748B' }}
+            >
+              <ListIcon size={16}/> List
+            </button>
+            <button 
+              onClick={() => setViewMode('calendar')} 
+              style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '6px', background: viewMode === 'calendar' ? 'white' : 'transparent', border: 'none', boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontWeight: viewMode === 'calendar' ? '600' : '500', color: viewMode === 'calendar' ? '#0F172A' : '#64748B' }}
+            >
+              <CalendarIcon size={16}/> Calendar
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {viewMode === 'list' && (
+        <div className="filter-toggles flex" style={{ marginBottom: '20px' }}>
           {['all', 'confirmed', 'checked_in', 'checked_out', 'cancelled'].map(f => (
             <button 
               key={f}
@@ -130,12 +207,22 @@ const Bookings = () => {
             </button>
           ))}
         </div>
-      </section>
+      )}
 
       {error && <div className="error-card">{error}</div>}
 
       {loading ? (
         <div className="flex-center" style={{ padding: '60px' }}>Loading Bookings...</div>
+      ) : viewMode === 'calendar' ? (
+        <CalendarView 
+          bookings={bookings} 
+          onDateClick={(date) => {
+            const tzOffset = date.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(date - tzOffset)).toISOString().split('T')[0];
+            setManualForm({ ...manualForm, startDate: localISOTime });
+            setShowManualModal(true);
+          }} 
+        />
       ) : filtered.length === 0 ? (
         <div className="card text-center" style={{ padding: '48px' }}>
           <CalendarCheck size={48} style={{ color: 'var(--text-light)', margin: '0 auto 16px' }} />
@@ -327,6 +414,69 @@ const Bookings = () => {
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={otpLoading}>
                   {otpLoading ? 'Verifying...' : 'Check In Guest'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Booking Modal */}
+      {showManualModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="flex-between modal-header" style={{ marginBottom: '16px' }}>
+              <h4>Create Walk-In / Manual Booking</h4>
+              <button onClick={() => setShowManualModal(false)} className="btn-close"><X size={20} /></button>
+            </div>
+            
+            <form onSubmit={handleCreateManualBooking}>
+              <div className="grid grid-cols-2" style={{ gap: '16px', marginBottom: '16px' }}>
+                <div className="form-group">
+                  <label>Guest Name</label>
+                  <input type="text" className="form-control" required value={manualForm.guestName} onChange={e => setManualForm({...manualForm, guestName: e.target.value})} placeholder="e.g. John Doe"/>
+                </div>
+                <div className="form-group">
+                  <label>Guest Phone (optional)</label>
+                  <input type="text" className="form-control" value={manualForm.guestPhone} onChange={e => setManualForm({...manualForm, guestPhone: e.target.value})} placeholder="e.g. +91 9876543210"/>
+                </div>
+                
+                <div className="form-group">
+                  <label>Property</label>
+                  <select className="form-control" required value={manualForm.propertyId} onChange={handlePropertyChange}>
+                    <option value="">Select Property...</option>
+                    {properties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Room / Category</label>
+                  <select className="form-control" required value={manualForm.roomId} onChange={e => setManualForm({...manualForm, roomId: e.target.value})} disabled={!manualForm.propertyId}>
+                    <option value="">Select Room...</option>
+                    {rooms.map(r => <option key={r._id} value={r._id}>{r.category} (₹{r.price}/night)</option>)}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Check-in Date</label>
+                  <input type="date" className="form-control" required value={manualForm.startDate} onChange={e => setManualForm({...manualForm, startDate: e.target.value})} />
+                </div>
+                
+                <div className="form-group">
+                  <label>Check-out Date</label>
+                  <input type="date" className="form-control" required value={manualForm.endDate} onChange={e => setManualForm({...manualForm, endDate: e.target.value})} min={manualForm.startDate} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Note to Host (Optional)</label>
+                <textarea className="form-control" rows="2" value={manualForm.noteToOwner} onChange={e => setManualForm({...manualForm, noteToOwner: e.target.value})} placeholder="Any special requests or instructions..."></textarea>
+              </div>
+
+              <div className="flex-between gap-12" style={{ marginTop: '24px' }}>
+                <button type="button" onClick={() => setShowManualModal(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={manualLoading}>
+                  {manualLoading ? 'Creating...' : 'Create Booking'}
                 </button>
               </div>
             </form>
